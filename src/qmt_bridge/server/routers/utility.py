@@ -3,17 +3,41 @@
 提供股票名称查询、代码归属市场判断、股票搜索等实用工具端点。
 底层调用 xtquant.xtdata 的合约信息接口，包括：
 - xtdata.get_instrument_detail()      — 获取单个合约详情（提取中文名称）
-- xtdata.get_instrument_detail_list() — 批量获取合约详情
 - xtdata.get_instrument_type()        — 获取合约类型
 - xtdata.get_stock_list_in_sector()   — 获取板块成分股（用于搜索）
 """
 
+import logging
+import re
+
 from fastapi import APIRouter, Query
 from xtquant import xtdata
 
-from ..helpers import _numpy_to_python
 
+logger = logging.getLogger("qmt_bridge")
 router = APIRouter(prefix="/api/utility", tags=["utility"])
+
+# 板块 -> {股票代码: 中文名称} 的懒加载缓存，首次搜索中文关键字时构建
+_sector_name_cache: dict[str, dict[str, str]] = {}
+
+
+def _has_chinese(text: str) -> bool:
+    return bool(re.search(r"[\u4e00-\u9fff]", text))
+
+
+def _get_name_cache(category: str) -> dict[str, str]:
+    """获取或构建板块内 股票代码->中文名称 的映射缓存。"""
+    if category not in _sector_name_cache:
+        all_stocks = xtdata.get_stock_list_in_sector(category)
+        logger.info("正在为板块 '%s' 构建名称缓存 (%d 只股票)…", category, len(all_stocks))
+        mapping = {}
+        for code in all_stocks:
+            detail = xtdata.get_instrument_detail(code)
+            name = detail.get("InstrumentName", "") if isinstance(detail, dict) else ""
+            mapping[code] = name
+        _sector_name_cache[category] = mapping
+        logger.info("板块 '%s' 名称缓存构建完成", category)
+    return _sector_name_cache[category]
 
 
 @router.get("/stock_name")
@@ -49,16 +73,13 @@ def get_batch_stock_name(
     Returns:
         data: {股票代码: 中文名称} 的映射字典。
 
-    底层调用: xtdata.get_instrument_detail_list(stock_list, iscomplete=False)
+    底层调用: xtdata.get_instrument_detail(stock)（逐只查询）
     """
     stock_list = [s.strip() for s in stocks.split(",")]
-    raw = xtdata.get_instrument_detail_list(stock_list, iscomplete=False)
     result = {}
-    data = _numpy_to_python(raw)
-    if isinstance(data, dict):
-        for code, info in data.items():
-            # 逐个提取中文名称
-            result[code] = info.get("InstrumentName", "") if isinstance(info, dict) else ""
+    for code in stock_list:
+        detail = xtdata.get_instrument_detail(code)
+        result[code] = detail.get("InstrumentName", "") if isinstance(detail, dict) else ""
     return {"data": result}
 
 
@@ -94,7 +115,10 @@ def search_stocks(
 ):
     """按关键字搜索股票代码。
 
-    在指定板块（类别）范围内，按代码前缀匹配搜索股票。
+    在指定板块（类别）范围内，按代码前缀或中文名称模糊匹配搜索股票。
+
+    - 中文关键字：同时匹配代码和名称（首次调用会构建名称缓存，耗时数秒）
+    - 非中文关键字：仅匹配代码（快速路径）
 
     Args:
         keyword: 搜索关键字（股票代码前缀或名称片段）。
@@ -106,11 +130,20 @@ def search_stocks(
         count: 匹配结果数量（受 limit 限制）。
         stocks: 匹配的股票代码列表。
 
-    底层调用: xtdata.get_stock_list_in_sector(category)
+    底层调用: xtdata.get_stock_list_in_sector(category),
+              xtdata.get_instrument_detail(stock)（名称缓存构建时）
     """
-    # 获取指定板块的全部股票列表
-    all_stocks = xtdata.get_stock_list_in_sector(category)
     keyword_upper = keyword.upper()
-    # 在代码中进行大小写不敏感的关键字匹配
-    matches = [s for s in all_stocks if keyword_upper in s.upper()]
+
+    if _has_chinese(keyword):
+        name_cache = _get_name_cache(category)
+        matches = [
+            code
+            for code, name in name_cache.items()
+            if keyword in name or keyword_upper in code.upper()
+        ]
+    else:
+        all_stocks = xtdata.get_stock_list_in_sector(category)
+        matches = [s for s in all_stocks if keyword_upper in s.upper()]
+
     return {"keyword": keyword, "count": len(matches[:limit]), "stocks": matches[:limit]}
