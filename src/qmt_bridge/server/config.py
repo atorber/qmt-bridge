@@ -16,7 +16,7 @@
 """
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -79,7 +79,8 @@ class Settings:
 
     # ---- 通知模块配置 ----
     notify_enabled: bool = False   # 是否启用通知推送
-    notify_backends: str = ""      # 通知后端，逗号分隔，如 "feishu", "webhook", "feishu,webhook"
+    # 通知后端，逗号分隔，如 "feishu", "webhook", "feishu,webhook"
+    notify_backends: str = ""
     notify_event_types: str = ""   # 允许推送的事件类型（逗号分隔），为空表示全部允许
     notify_ignore_event_types: str = ""  # 排除的事件类型（逗号分隔）
 
@@ -97,6 +98,11 @@ class Settings:
     scheduler_kline_sectors: str = "沪深A股,沪深ETF,沪深指数"  # K 线下载板块
     scheduler_financial_enabled: bool = True      # 是否启用财务数据增量下载
     scheduler_financial_sectors: str = "沪深A股"  # 财务数据只对 A 股有意义
+    # ---- xtdata 鲁棒性配置 ----
+    xtdata_lock_wait_timeout_sec: float = 15.0  # 全局 xtdata 锁等待超时（秒）
+    divid_factors_timeout_sec: float = 8.0      # /divid_factors 默认执行超时（秒）
+    divid_factors_slow_log_sec: float = 1.0     # /divid_factors 慢调用阈值（秒）
+    market_data_timeout_sec: float = 20.0       # /market_data 默认执行超时（秒）
 
     @classmethod
     def from_env(cls, env_path: Path | None = None) -> "Settings":
@@ -167,6 +173,18 @@ class Settings:
             in ("1", "true", "yes"),
             scheduler_financial_sectors=os.environ.get(
                 "QMT_BRIDGE_SCHEDULER_FINANCIAL_SECTORS", "沪深A股"
+            ),
+            xtdata_lock_wait_timeout_sec=float(
+                os.environ.get("QMT_BRIDGE_XTDATA_LOCK_WAIT_TIMEOUT_SEC", "15")
+            ),
+            divid_factors_timeout_sec=float(
+                os.environ.get("QMT_BRIDGE_DIVID_FACTORS_TIMEOUT_SEC", "8")
+            ),
+            divid_factors_slow_log_sec=float(
+                os.environ.get("QMT_BRIDGE_DIVID_FACTORS_SLOW_LOG_SEC", "1")
+            ),
+            market_data_timeout_sec=float(
+                os.environ.get("QMT_BRIDGE_MARKET_DATA_TIMEOUT_SEC", "20")
             ),
         )
 

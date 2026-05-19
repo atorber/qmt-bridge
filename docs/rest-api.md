@@ -29,6 +29,14 @@
 | GET | `/api/market/fullspeed_orderbook` | 全速 Order Book |
 | GET | `/api/market/transactioncount` | 成交笔数 |
 
+### `/api/market/divid_factors` 鲁棒性说明
+
+- 可选参数：`timeout_sec`（`0.5~120` 秒），用于覆盖服务端默认超时。
+- 默认超时由环境变量 `QMT_BRIDGE_DIVID_FACTORS_TIMEOUT_SEC` 控制（默认 `8` 秒）。
+- 底层调用超时时返回 `504 Gateway Timeout`，避免请求长期挂起。
+- 底层调用异常时返回 `502 Bad Gateway`。
+- 若全局 xtdata 串行锁等待超时，返回 `503 Service Unavailable`，超时时间由 `QMT_BRIDGE_XTDATA_LOCK_WAIT_TIMEOUT_SEC` 控制（默认 `15` 秒）。
+
 ## Tick & L2 — 逐笔数据 `/api/tick/*`
 
 | 方法 | 路径 | 说明 |

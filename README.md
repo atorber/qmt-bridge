@@ -27,6 +27,7 @@ QMT Bridge 解决这个问题：Windows 电脑作为数据中转站，运行 QMT
 - **零依赖客户端** — Python 客户端基于 stdlib，无需安装 xtquant 即可在任意平台使用
 - **API Key 认证** — 可选的 API Key 保护，交易端点强制认证
 - **自动预下载** — 服务启动时自动下载板块、日历、指数权重等基础数据，之后每日定时刷新，客户端无需手动触发
+- **Agent Skills** — 仓库内置 `skills/`，供 Cursor / Claude Code 等 Agent 统一执行交易流程（持仓、下单、清仓等）
 
 ## Prerequisites
 
@@ -134,6 +135,9 @@ curl http://<Windows局域网IP>:8000/api/meta/health
 | `QMT_BRIDGE_TRADING_ENABLED` | `--trading` | `false` | 是否启用交易模块 |
 | `QMT_BRIDGE_MINI_QMT_PATH` | `--mini-qmt-path` | _(空)_ | miniQMT 安装路径（交易模块需要） |
 | `QMT_BRIDGE_TRADING_ACCOUNT_ID` | `--account-id` | _(空)_ | 交易账户 ID |
+| `QMT_BRIDGE_XTDATA_LOCK_WAIT_TIMEOUT_SEC` | — | `15` | 全局 xtdata 串行锁最大等待秒数，超时返回 `503` |
+| `QMT_BRIDGE_DIVID_FACTORS_TIMEOUT_SEC` | — | `8` | `/api/market/divid_factors` 默认执行超时秒数，超时返回 `504` |
+| `QMT_BRIDGE_DIVID_FACTORS_SLOW_LOG_SEC` | — | `1` | `/api/market/divid_factors` 慢调用日志阈值（秒） |
 
 ## Auto Pre-download（自动预下载）
 
@@ -181,6 +185,8 @@ curl http://<Windows局域网IP>:8000/api/meta/health
 | GET | `/api/market/local_data` | 仅读本地缓存（离线可用） |
 | GET | `/api/market/divid_factors` | 除权因子 |
 | GET | `/api/market/market_data` | 通用行情数据查询 |
+
+`/api/market/divid_factors` 额外支持可选参数 `timeout_sec`（单位秒，范围 `0.5~120`），用于覆盖服务端默认超时。该接口在底层卡住时会超时降级并返回 `504`，避免长时间占用全局串行能力。
 
 ### Tick & L2 — 逐笔数据 `/api/tick/*`
 
@@ -532,12 +538,43 @@ curl -X POST http://192.168.1.100:8000/api/trading/order \
   -d '{"stock_code": "000001.SZ", "order_type": 23, "order_volume": 100}'
 ```
 
+## Documentation
+
+| 方式 | 说明 |
+|------|------|
+| **GitHub Pages** | push 到 `main` 后由 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) 自动构建发布；地址为 `https://<仓库 owner>.github.io/qmt-bridge/`（上游示例：<https://atompilot.github.io/qmt-bridge/>） |
+| **本地 MkDocs** | `just install-docs && just docs` → <http://127.0.0.1:8001> |
+| **运行时 Swagger** | 服务启动后访问 `/docs` 或 `/redoc` |
+
+首次启用需在仓库 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。
+
+## Agent Skills
+
+仓库 [`skills/`](skills/) 目录发布与 API 配套的 Agent Skill（Markdown + YAML frontmatter），随 git 克隆分发，便于在多种 Agent 中复用同一套交易规范。
+
+| Skill | 说明 |
+|-------|------|
+| [`qmt-bridge-trading`](skills/qmt-bridge-trading/SKILL.md) | 持仓查询、下单、批量下单、撤单、清仓 |
+
+**Cursor**：在仓库根目录链接到项目 skills 目录后即可自动匹配：
+
+```bash
+mkdir -p .cursor/skills && ln -sf ../../skills/qmt-bridge-trading .cursor/skills/qmt-bridge-trading
+```
+
+也可在对话中直接 `@skills/qmt-bridge-trading/SKILL.md`。配套可执行脚本见 `skills/qmt-bridge-trading/scripts/`（`just agent-trading-status` 等）。其他 Agent 与贡献说明见 [`skills/README.md`](skills/README.md)，在线文档见 [Agent Skills](docs/agent-skills.md)。
+
 ## Project Structure
 
 ```
 qmt-bridge/
 ├── pyproject.toml                  # 项目元数据与依赖
 ├── .env.example                    # 配置模板
+├── skills/                         # Agent Skills（随仓库发布）
+│   ├── README.md                   # 各 Agent 集成说明
+│   └── qmt-bridge-trading/         # 交易 skill
+│       ├── SKILL.md
+│       └── scripts/                # Agent 可执行脚本
 ├── scripts/                        # 启动 / 停止脚本
 │   ├── start.sh / start.bat        # 前台启动
 │   ├── start-nohup.sh              # 后台启动

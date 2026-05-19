@@ -1,6 +1,9 @@
 site_name: QMT Bridge 文档
 site_description: miniQMT 行情与交易 HTTP/WebSocket 桥接
-repo_url: https://github.com/qmt-bridge/qmt-bridge
+# CI 通过 MKDOCS_SITE_URL 注入；本地默认 8001 预览地址
+site_url: !ENV [MKDOCS_SITE_URL, 'http://127.0.0.1:8001/']
+repo_url: https://github.com/atompilot/qmt-bridge
+edit_uri: edit/main/docs/
 
 theme:
   name: material
@@ -33,6 +36,7 @@ nav:
   - 首页: index.md
   - 快速开始: getting-started.md
   - 配置参考: configuration.md
+  - Agent Skills: agent-skills.md
   - REST API 速查: rest-api.md
   - WebSocket: websocket.md
   - Python 客户端 API:

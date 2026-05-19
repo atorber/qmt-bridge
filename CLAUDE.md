@@ -19,6 +19,7 @@ src/qmt_bridge/
   client/          # Python 客户端 (Mixin 模式)
   _version.py      # 单一版本源
 scripts/           # 独立脚本 (download_all.py 等)
+skills/            # Agent Skills（见 skills/README.md）
 tests/             # pytest 测试
 dashboard/         # Streamlit 仪表盘
 logs/              # 运行日志 (gitignored)
@@ -35,6 +36,10 @@ just test                 # 运行测试
 just check                # 格式化 + lint (ruff)
 just build                # 构建 wheel
 ```
+
+## Agent Skills
+
+交易相关任务遵循 `skills/qmt-bridge-trading/SKILL.md`（持仓、下单、批量下单、撤单、清仓）。集成方式见 `skills/README.md`。
 
 ## 开发规范
 

@@ -79,6 +79,20 @@ download-5m *ARGS:
 download-5m-recent *ARGS:
     python scripts/download_all.py --periods 5m --skip-financial --since 2025 {{ARGS}}
 
+# ─────────────────────────── Agent 交易脚本 ─────────────────
+
+# 交易状态摘要（只读，需 .env 中 QMT_BRIDGE_API_KEY）
+agent-trading-status *ARGS:
+    python skills/qmt-bridge-trading/scripts/trading_status.py {{ARGS}}
+
+# 单笔下单预览（加 --execute --confirm 实盘提交）
+agent-place-order *ARGS:
+    python skills/qmt-bridge-trading/scripts/place_order.py {{ARGS}}
+
+# 清仓预览（加 --execute --confirm 实盘提交）
+agent-liquidate *ARGS:
+    python skills/qmt-bridge-trading/scripts/liquidate.py {{ARGS}}
+
 # ─────────────────────────── 仪表盘 ─────────────────────────
 
 # 启动可视化仪表盘（http://localhost:8501）

@@ -54,6 +54,18 @@ dashboard = [
     "plotly>=5.18",
     "pandas>=1.5",
 ]
+test = [
+    "pytest>=7.4",
+    "httpx>=0.25",
+    "qmt-bridge[server]",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = [
+    "ignore:Duplicate Operation ID:UserWarning",
+]
 
 [project.scripts]
 qmt-server = "qmt_bridge.server.cli:main"
@@ -70,4 +82,11 @@ path = "src/qmt_bridge/_version.py"
 packages = ["src/qmt_bridge"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/qmt_bridge", "tests", "README.md", "LICENSE", "pyproject.toml"]
+include = [
+    "src/qmt_bridge",
+    "tests",
+    "skills",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]

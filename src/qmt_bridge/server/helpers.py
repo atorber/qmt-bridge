@@ -15,9 +15,12 @@ import pandas as pd
 
 
 def _numpy_to_python(obj):
-    """递归地将嵌套数据结构中的 numpy 类型转换为 Python 原生类型。
+    """递归地将嵌套数据结构中的 numpy/pandas 类型转换为 Python 原生类型。
 
-    处理规则：
+    处理规则（按优先级）：
+    - pd.DataFrame: reset_index 后转 records 列表，再递归处理
+    - pd.Series: 转 dict，再递归处理
+    - pd.Timestamp / np.datetime64: 转为 ISO 格式字符串
     - dict: 递归处理所有值
     - list/tuple: 递归处理所有元素
     - float: NaN / Inf / -Inf 转为 None（避免 JSON 序列化错误）
@@ -25,14 +28,25 @@ def _numpy_to_python(obj):
     - np.integer (int64 等): 转为 Python int
     - np.floating (float64 等): 转为 Python float，NaN/Inf 转 None
     - np.bool_: 转为 Python bool
-    - 其他类型: 原样返回
+    - 其他类型: 原样返回（xtquant C 扩展对象走 dir() fallback）
 
     Args:
-        obj: 任意嵌套数据结构，可能包含 numpy 类型。
+        obj: 任意嵌套数据结构，可能包含 numpy/pandas 类型。
 
     Returns:
         转换后的 Python 原生类型数据结构。
     """
+    # ── pandas 类型：必须在通用 fallback 之前处理，否则 dir() 会因 .T 等属性死递归 ──
+    if isinstance(obj, pd.DataFrame):
+        # reset_index() 把时间/代码索引变成普通列，records 格式最通用
+        return _numpy_to_python(obj.reset_index().to_dict(orient="records"))
+    if isinstance(obj, pd.Series):
+        return _numpy_to_python(obj.reset_index().to_dict(orient="records"))
+    if isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    if isinstance(obj, np.datetime64):
+        return pd.Timestamp(obj).isoformat()
+
     if isinstance(obj, dict):
         return {k: _numpy_to_python(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):

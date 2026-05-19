@@ -16,7 +16,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 
 from .config import Settings, get_settings
 
@@ -37,13 +37,34 @@ logger = logging.getLogger("qmt_bridge")
 _xtdata_lock = asyncio.Lock()
 
 
-async def _xtdata_serialize():
+async def _xtdata_serialize(settings: Settings = Depends(get_settings)):
     """FastAPI 依赖：串行化 xtdata 调用，防止并发导致 C 扩展崩溃。"""
     logger.debug("xtdata_lock: 等待获取锁...")
-    async with _xtdata_lock:
+    acquired = False
+    try:
+        await asyncio.wait_for(
+            _xtdata_lock.acquire(),
+            timeout=settings.xtdata_lock_wait_timeout_sec,
+        )
+        acquired = True
         logger.debug("xtdata_lock: ✓ 已获取锁")
         yield
-    logger.debug("xtdata_lock: 已释放锁")
+    except TimeoutError as exc:
+        logger.warning(
+            "xtdata_lock: 获取超时，timeout=%.2fs",
+            settings.xtdata_lock_wait_timeout_sec,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "xtdata busy: lock wait timeout, "
+                f"exceeded {settings.xtdata_lock_wait_timeout_sec:.2f}s"
+            ),
+        ) from exc
+    finally:
+        if acquired:
+            _xtdata_lock.release()
+            logger.debug("xtdata_lock: 已释放锁")
 
 
 # 所有调用 xtdata 的 HTTP 路由共享此依赖列表
@@ -203,7 +224,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 注册 WebSocket 端点（实时数据推送）
     # WebSocket 不加串行化依赖，避免长连接永久持锁
     # ------------------------------------------------------------------
-    from .ws import download_progress, formula as formula_ws, realtime, whole_quote
+    from .ws import (
+        download_progress,
+        formula as formula_ws,
+        realtime,
+        whole_quote,
+    )
 
     app.include_router(realtime.router)
     app.include_router(whole_quote.router)

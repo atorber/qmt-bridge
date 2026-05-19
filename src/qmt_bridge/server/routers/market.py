@@ -13,12 +13,19 @@
 - xtdata.get_transactioncount()   — 获取逐笔成交计数
 """
 
-from fastapi import APIRouter, Query
+import logging
+import multiprocessing as mp
+import queue
+import time
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from xtquant import xtdata
 
+from ..config import Settings, get_settings
 from ..helpers import _dataframe_dict_to_records, _numpy_to_python
 
 router = APIRouter(prefix="/api/market", tags=["market"])
+logger = logging.getLogger("qmt_bridge")
 
 # 主要指数列表（用于 /indices 端点快速查询大盘行情）
 MAJOR_INDICES = [
@@ -30,6 +37,48 @@ MAJOR_INDICES = [
     "000905.SH",  # 中证500
     "000852.SH",  # 中证1000
 ]
+
+
+def _divid_factors_worker(
+    stock: str,
+    start_time: str,
+    end_time: str,
+    result_queue: mp.Queue,
+):
+    """子进程执行 xtdata.get_divid_factors，避免主服务线程长时间卡死。"""
+    try:
+        raw = xtdata.get_divid_factors(stock, start_time=start_time, end_time=end_time)
+        result_queue.put(("ok", raw))
+    except Exception as exc:  # pragma: no cover - 依赖外部运行时
+        result_queue.put(("err", repr(exc)))
+
+
+def _market_data_worker(
+    field_list: list[str],
+    stock_list: list[str],
+    period: str,
+    start_time: str,
+    end_time: str,
+    count: int,
+    dividend_type: str,
+    fill_data: bool,
+    result_queue: mp.Queue,
+):
+    """子进程执行 xtdata.get_market_data，避免主服务线程长时间卡死。"""
+    try:
+        raw = xtdata.get_market_data(
+            field_list=field_list,
+            stock_list=stock_list,
+            period=period,
+            start_time=start_time,
+            end_time=end_time,
+            count=count,
+            dividend_type=dividend_type,
+            fill_data=fill_data,
+        )
+        result_queue.put(("ok", raw))
+    except Exception as exc:  # pragma: no cover - 依赖外部运行时
+        result_queue.put(("err", repr(exc)))
 
 
 @router.get("/full_tick")
@@ -155,6 +204,13 @@ def get_divid_factors(
     stock: str = Query(..., description="股票代码，如 000001.SZ"),
     start_time: str = Query("", description="开始时间"),
     end_time: str = Query("", description="结束时间"),
+    timeout_sec: float | None = Query(
+        None,
+        ge=0.5,
+        le=120,
+        description="本次调用超时（秒），为空则使用服务端默认配置",
+    ),
+    settings: Settings = Depends(get_settings),
 ):
     """获取指定股票的除权因子数据。
 
@@ -170,8 +226,84 @@ def get_divid_factors(
 
     底层调用: xtdata.get_divid_factors(stock, start_time=..., end_time=...)
     """
-    raw = xtdata.get_divid_factors(stock, start_time=start_time, end_time=end_time)
-    return {"stock": stock, "data": _numpy_to_python(raw)}
+    effective_timeout = timeout_sec or settings.divid_factors_timeout_sec
+    start = time.perf_counter()
+    ctx = mp.get_context("spawn")
+    result_queue: mp.Queue = ctx.Queue(maxsize=1)
+    proc = ctx.Process(
+        target=_divid_factors_worker,
+        args=(stock, start_time, end_time, result_queue),
+        daemon=True,
+    )
+    proc.start()
+    proc.join(timeout=effective_timeout)
+    elapsed = time.perf_counter() - start
+
+    if proc.is_alive():
+        proc.terminate()
+        proc.join(timeout=1.0)
+        logger.error(
+            "market.divid_factors timeout: stock=%s start=%s end=%s elapsed=%.3fs timeout=%.2fs",
+            stock,
+            start_time,
+            end_time,
+            elapsed,
+            effective_timeout,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=(
+                "xtdata.get_divid_factors timeout, "
+                f"exceeded {effective_timeout:.2f}s"
+            ),
+        )
+
+    if elapsed >= settings.divid_factors_slow_log_sec:
+        logger.warning(
+            "market.divid_factors slow call: stock=%s start=%s end=%s elapsed=%.3fs",
+            stock,
+            start_time,
+            end_time,
+            elapsed,
+        )
+    else:
+        logger.debug(
+            "market.divid_factors call: stock=%s start=%s end=%s elapsed=%.3fs",
+            stock,
+            start_time,
+            end_time,
+            elapsed,
+        )
+
+    try:
+        result_status, payload = result_queue.get_nowait()
+    except queue.Empty as exc:
+        logger.error(
+            "market.divid_factors empty result: stock=%s start=%s end=%s elapsed=%.3fs",
+            stock,
+            start_time,
+            end_time,
+            elapsed,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="xtdata.get_divid_factors returned no data",
+        ) from exc
+
+    if result_status == "err":
+        logger.error(
+            "market.divid_factors failed: stock=%s start=%s end=%s error=%s",
+            stock,
+            start_time,
+            end_time,
+            payload,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"xtdata.get_divid_factors failed: {payload}",
+        )
+
+    return {"stock": stock, "data": _numpy_to_python(payload)}
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +321,13 @@ def get_market_data(
     count: int = Query(-1, description="返回条数"),
     dividend_type: str = Query("none", description="除权类型"),
     fill_data: bool = Query(True, description="是否填充空数据"),
+    timeout_sec: float | None = Query(
+        None,
+        ge=0.5,
+        le=180,
+        description="本次调用超时（秒），为空则使用服务端默认配置",
+    ),
+    settings: Settings = Depends(get_settings),
 ):
     """通过原始 get_market_data 接口获取行情数据。
 
@@ -214,16 +353,74 @@ def get_market_data(
 
     stock_list = [s.strip() for s in stocks.split(",")]
     field_list = [f.strip() for f in fields.split(",")]
-    raw = xtdata.get_market_data(
-        field_list=field_list,
-        stock_list=stock_list,
-        period=period,
-        start_time=start_time,
-        end_time=end_time,
-        count=count,
-        dividend_type=dividend_type,
-        fill_data=fill_data,
+    effective_timeout = timeout_sec or settings.market_data_timeout_sec
+    start = time.perf_counter()
+    ctx = mp.get_context("spawn")
+    result_queue: mp.Queue = ctx.Queue(maxsize=1)
+    proc = ctx.Process(
+        target=_market_data_worker,
+        args=(
+            field_list,
+            stock_list,
+            period,
+            start_time,
+            end_time,
+            count,
+            dividend_type,
+            fill_data,
+            result_queue,
+        ),
+        daemon=True,
     )
+    proc.start()
+    proc.join(timeout=effective_timeout)
+    elapsed = time.perf_counter() - start
+
+    if proc.is_alive():
+        proc.terminate()
+        proc.join(timeout=1.0)
+        logger.error(
+            "market.market_data timeout: stocks=%s period=%s elapsed=%.3fs timeout=%.2fs",
+            ",".join(stock_list),
+            period,
+            elapsed,
+            effective_timeout,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=(
+                "xtdata.get_market_data timeout, "
+                f"exceeded {effective_timeout:.2f}s"
+            ),
+        )
+
+    try:
+        result_status, payload = result_queue.get_nowait()
+    except queue.Empty as exc:
+        logger.error(
+            "market.market_data empty result: stocks=%s period=%s elapsed=%.3fs",
+            ",".join(stock_list),
+            period,
+            elapsed,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="xtdata.get_market_data returned no data",
+        ) from exc
+
+    if result_status == "err":
+        logger.error(
+            "market.market_data failed: stocks=%s period=%s error=%s",
+            ",".join(stock_list),
+            period,
+            payload,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"xtdata.get_market_data failed: {payload}",
+        )
+
+    raw = payload
     records = _market_data_to_records(raw, stock_list, field_list)
     return {"data": records}
 
