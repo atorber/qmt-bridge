@@ -20,6 +20,7 @@ Mac / Linux (主力机)                    Windows (中转站)
 - **程序化交易** (可选) — 下单、撤单、批量委托、融资融券、银证转账、智能交易
 - **零依赖客户端** — Python 客户端基于 stdlib，无需安装 xtquant 即可在任意平台使用
 - **API Key 认证** — 可选的 API Key 保护，交易端点强制认证
+- **Agent Skills** — 19 个 Skill + `just agent-*`，含当日盈亏、交易复盘、组合风险等
 
 ## 快速导航
 
@@ -27,6 +28,8 @@ Mac / Linux (主力机)                    Windows (中转站)
 |------|------|
 | [快速开始](getting-started.md) | 安装、配置、启动服务 |
 | [配置参考](configuration.md) | 所有配置项详解 |
+| [开发与 just](development.md) | `justfile` 命令速查 |
+| [Agent Skills](agent-skills.md) | Skill 列表、**提示词示例**、当日盈亏、工作流 |
 | [REST API 速查](rest-api.md) | 全部 HTTP 端点列表 |
 | [WebSocket](websocket.md) | WebSocket 端点使用指南 |
 | [Python 客户端 API](api/index.md) | `QMTClient` 完整 API 参考 |

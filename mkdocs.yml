@@ -36,6 +36,7 @@ nav:
   - 首页: index.md
   - 快速开始: getting-started.md
   - 配置参考: configuration.md
+  - 开发与 just: development.md
   - Agent Skills: agent-skills.md
   - REST API 速查: rest-api.md
   - WebSocket: websocket.md

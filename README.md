@@ -550,7 +550,7 @@ curl -X POST http://192.168.1.100:8000/api/trading/order \
 
 ## Agent Skills
 
-仓库 [`skills/`](skills/) 发布 **19 个**与 REST API 配套的 Agent Skill（`SKILL.md` + 可执行 Python 脚本），供 Cursor / Claude Code 等在对话中按规范调用 Bridge。路线图见 [`skills/ROADMAP.md`](skills/ROADMAP.md)，完整列表见 [`skills/README.md`](skills/README.md)，在线文档见 [Agent Skills](docs/agent-skills.md)。
+仓库 [`skills/`](skills/) 发布 **19 个**与 REST API 配套的 Agent Skill（`SKILL.md` + 可执行 Python 脚本），供 Cursor / Claude Code 等在对话中按规范调用 Bridge。路线图见 [`skills/ROADMAP.md`](skills/ROADMAP.md)；完整列表、**just 命令与提示词示例**见 [`skills/README.md`](skills/README.md)，在线文档见 [Agent Skills](docs/agent-skills.md)。
 
 ### 分类概览
 
