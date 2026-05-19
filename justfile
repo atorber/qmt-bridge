@@ -113,6 +113,10 @@ agent-list-orders *ARGS:
 agent-cancel-orders *ARGS:
     python skills/qmt-bridge-order-ops/scripts/cancel_orders.py {{ARGS}}
 
+# 多周期累计涨幅与涨跌概率（--codes 无需 Key；--holdings 需 API Key，缺 K 自动下载）
+agent-return-analysis *ARGS:
+    python skills/qmt-bridge-return-analysis/scripts/return_probability_analysis.py {{ARGS}}
+
 # 自选行情快照（只读，无需 API Key）
 agent-watchlist *ARGS:
     python skills/qmt-bridge-market-watch/scripts/watchlist_snapshot.py {{ARGS}}

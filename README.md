@@ -27,7 +27,7 @@ QMT Bridge 解决这个问题：Windows 电脑作为数据中转站，运行 QMT
 - **零依赖客户端** — Python 客户端基于 stdlib，无需安装 xtquant 即可在任意平台使用
 - **API Key 认证** — 可选的 API Key 保护，交易端点强制认证
 - **自动预下载** — 服务启动时自动下载板块、日历、指数权重等基础数据，之后每日定时刷新，客户端无需手动触发
-- **Agent Skills** — 仓库内置 **19 个** `skills/`（交易、复盘、组合风险、**当日盈亏**、行情研究等），配套 `just agent-*` 可执行脚本
+- **Agent Skills** — 仓库内置 **20 个** `skills/`（交易、复盘、组合风险、**当日盈亏**、行情研究等），配套 `just agent-*` 可执行脚本
 
 ## Prerequisites
 
@@ -550,7 +550,7 @@ curl -X POST http://192.168.1.100:8000/api/trading/order \
 
 ## Agent Skills
 
-仓库 [`skills/`](skills/) 发布 **19 个**与 REST API 配套的 Agent Skill（`SKILL.md` + 可执行 Python 脚本），供 Cursor / Claude Code 等在对话中按规范调用 Bridge。路线图见 [`skills/ROADMAP.md`](skills/ROADMAP.md)；完整列表、**just 命令与提示词示例**见 [`skills/README.md`](skills/README.md)，在线文档见 [Agent Skills](docs/agent-skills.md)。
+仓库 [`skills/`](skills/) 发布 **20 个**与 REST API 配套的 Agent Skill（`SKILL.md` + 可执行 Python 脚本），供 Cursor / Claude Code 等在对话中按规范调用 Bridge。路线图见 [`skills/ROADMAP.md`](skills/ROADMAP.md)；完整列表、**just 命令与提示词示例**见 [`skills/README.md`](skills/README.md)，在线文档见 [Agent Skills](docs/agent-skills.md)。
 
 ### 分类概览
 
@@ -563,7 +563,8 @@ curl -X POST http://192.168.1.100:8000/api/trading/order \
 | 风控与复盘 | [portfolio-risk](skills/qmt-bridge-portfolio-risk/SKILL.md) | 组合风险快照 |
 | | [**daily-pnl**](skills/qmt-bridge-daily-pnl/SKILL.md) | **当日盈亏**（持仓 + 成交 + 已清仓） |
 | | [execution-review](skills/qmt-bridge-execution-review/SKILL.md) | 当日交易复盘 |
-| 研究 | [market-watch](skills/qmt-bridge-market-watch/SKILL.md) | 自选/指数快照 |
+| 研究 | [**return-analysis**](skills/qmt-bridge-return-analysis/SKILL.md) | **多周期累计涨幅 + 涨跌概率**（日 K） |
+| | [market-watch](skills/qmt-bridge-market-watch/SKILL.md) | 自选/指数快照 |
 | | [sector-theme](skills/qmt-bridge-sector-theme/SKILL.md) | 板块涨跌排序 |
 | | [financial-download](skills/qmt-bridge-financial-download/SKILL.md) | 下载财报 |
 | | [fundamental-screen](skills/qmt-bridge-fundamental-screen/SKILL.md) | 财报筛选 |
@@ -583,6 +584,12 @@ just agent-trading-status --port 8080 --api-key YOUR_KEY
 # 当日盈亏：表格化账户概览 + 分标的昨仓/今买/今卖拆解（只读）
 just agent-daily-pnl --port 8080 --api-key YOUR_KEY
 
+# 累计涨幅与涨跌概率（持仓一键：需 API Key，缺 K 自动下载）
+just agent-return-analysis --holdings --host 127.0.0.1 --port 8080 --api-key YOUR_KEY
+
+# 指定代码（行情一般无需 Key）
+just agent-return-analysis --host 127.0.0.1 --port 8080 --codes 000001.SZ,600519.SH
+
 # 无 just 时
 python skills/qmt-bridge-daily-pnl/scripts/daily_pnl_snapshot.py \
   --host 127.0.0.1 --port 8080 --api-key YOUR_KEY
@@ -598,7 +605,7 @@ python skills/qmt-bridge-daily-pnl/scripts/daily_pnl_snapshot.py \
 qmt-bridge/
 ├── pyproject.toml                  # 项目元数据与依赖
 ├── .env.example                    # 配置模板
-├── skills/                         # 19 个 Agent Skills + _shared 公共模块
+├── skills/                         # 20 个 Agent Skills + _shared 公共模块
 │   ├── README.md                   # 列表、工作流、运行方式
 │   ├── ROADMAP.md                  # 实现状态
 │   ├── _shared/                    # common、pnl_util、table_fmt 等

@@ -62,6 +62,8 @@ def add_client_args(parser) -> None:
 def resolve_connection(args) -> tuple[str, int, str, str]:
     """解析 host/port/api_key/account_id。"""
     host = args.host or os.environ.get("QMT_BRIDGE_HOST", "127.0.0.1")
+    if host in ("0.0.0.0", "::"):
+        host = "127.0.0.1"
     port = args.port if args.port is not None else int(os.environ.get("QMT_BRIDGE_PORT", "8000"))
     api_key = args.api_key if args.api_key is not None else os.environ.get("QMT_BRIDGE_API_KEY", "")
     account_id = (

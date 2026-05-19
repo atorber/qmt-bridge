@@ -1,6 +1,6 @@
 # Agent Skills
 
-QMT Bridge 在 [`skills/`](../skills/) 提供 **19 个 Agent Skills**，均已配套可执行 Python 脚本与 [`justfile`](../justfile) 中的 `just agent-*` 快捷命令。
+QMT Bridge 在 [`skills/`](../skills/) 提供 **20 个 Agent Skills**，均已配套可执行 Python 脚本与 [`justfile`](../justfile) 中的 `just agent-*` 快捷命令。
 
 **路线图**：[skills/ROADMAP.md](../skills/ROADMAP.md) · **总览**：[skills/README.md](../skills/README.md) · **just 命令**：[开发与 just](development.md)
 
@@ -63,6 +63,7 @@ python skills/qmt-bridge-daily-pnl/scripts/daily_pnl_snapshot.py \
 | [qmt-bridge-portfolio-risk](../skills/qmt-bridge-portfolio-risk/SKILL.md) | 组合风险 | `agent-portfolio-risk` | `组合风险快照` · `持仓集中度是否过高` · `下单前现金够不够、有没有 T+1` |
 | [qmt-bridge-daily-pnl](../skills/qmt-bridge-daily-pnl/SKILL.md) | 当日盈亏 | `agent-daily-pnl` | `今天账户盈亏多少` · `分标的列当日盈亏表` · `包含今天买卖和已清仓的盈亏` |
 | [qmt-bridge-order-ops](../skills/qmt-bridge-order-ops/SKILL.md) | 查单、撤单 | `agent-list-orders` | `查今日委托和可撤单` · `撤销 order_id 为 xxx 的委托` |
+| [qmt-bridge-return-analysis](../skills/qmt-bridge-return-analysis/SKILL.md) | 累计涨幅/概率 | `agent-return-analysis` | `1/5/10/30日涨幅多少` · `近10日K线上涨概率` |
 | [qmt-bridge-market-watch](../skills/qmt-bridge-market-watch/SKILL.md) | 自选快照 | `agent-watchlist` | `自选行情快照` · `盘前看下指数和自选涨跌` |
 | [qmt-bridge-sector-theme](../skills/qmt-bridge-sector-theme/SKILL.md) | 板块排序 | `agent-sector-rank` | `板块内涨幅排名` · `今天行业强弱怎么排` |
 | [qmt-bridge-financial-download](../skills/qmt-bridge-financial-download/SKILL.md) | 下载财报 | `agent-download-financial` | `下载财报到 Bridge 缓存` · `补全这几只股票的财务数据` |
@@ -90,7 +91,8 @@ calendar → watchlist / sector-rank
 | 阶段 | just 命令 | 说明 | 提示词示例 |
 |------|-----------|------|------------|
 | 日历 | `agent-calendar` | 是否交易日 | `今天是不是交易日` |
-| 看盘 | `agent-watchlist` / `agent-sector-rank` | 自选、板块 | `自选行情快照` · `板块内涨幅排名` |
+| 强弱 | `agent-return-analysis` / `agent-watchlist` | 阶段涨幅、自选 | `N日累计涨幅` · `涨跌概率` |
+| 看盘 | `agent-sector-rank` | 板块 | `板块内涨幅排名` |
 | 研究 | `agent-download-financial` / `agent-screen-financial` | 财报 | `下载财报到 Bridge 缓存` · `按 ROE、EPS 做基本面筛选` |
 | 风控 | `agent-portfolio-risk` | 集中度、现金 | `组合风险快照` · `下单前现金够不够` |
 | 盈亏 | `agent-daily-pnl` | 当日盈亏表 | `今天账户盈亏多少` · `分标的列当日盈亏表` |
@@ -134,7 +136,7 @@ Skill：[qmt-bridge-daily-pnl](../skills/qmt-bridge-daily-pnl/SKILL.md)
 | 风控与复盘 | portfolio-risk | `portfolio_snapshot` |
 | | daily-pnl | `daily_pnl_snapshot` |
 | | execution-review | `daily_trade_report` |
-| 研究 | market-watch | `watchlist_snapshot` |
+| 研究 | return-analysis / market-watch | `return_probability_analysis`, `watchlist_snapshot` |
 | | sector-theme | `sector_rank` |
 | | financial-download | `download_financial_data` |
 | | fundamental-screen | `screen_financial` |

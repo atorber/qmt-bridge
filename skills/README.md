@@ -1,6 +1,6 @@
 # Agent Skills
 
-本目录包含与 **QMT Bridge** 配套的 [Agent Skills](https://docs.cursor.com/context/skills)。**19 个 Skill** 均已提供可执行脚本（见 [ROADMAP.md](ROADMAP.md)）。
+本目录包含与 **QMT Bridge** 配套的 [Agent Skills](https://docs.cursor.com/context/skills)。**20 个 Skill** 均已提供可执行脚本（见 [ROADMAP.md](ROADMAP.md)）。
 
 在线文档：[Agent Skills](../docs/agent-skills.md)
 
@@ -21,6 +21,7 @@
 | [qmt-bridge-portfolio-risk](qmt-bridge-portfolio-risk/SKILL.md) | 组合风险 | `just agent-portfolio-risk` | `组合风险快照` · `持仓集中度是否过高` · `下单前现金够不够、有没有 T+1` |
 | [qmt-bridge-daily-pnl](qmt-bridge-daily-pnl/SKILL.md) | 当日盈亏 | `just agent-daily-pnl` | `今天账户盈亏多少` · `分标的列当日盈亏表` · `包含今天买卖和已清仓的盈亏` |
 | [qmt-bridge-order-ops](qmt-bridge-order-ops/SKILL.md) | 查单、撤单 | `just agent-list-orders` | `查今日委托和可撤单` · `撤销 order_id 为 xxx 的委托` |
+| [qmt-bridge-return-analysis](qmt-bridge-return-analysis/SKILL.md) | 累计涨幅/涨跌概率 | `just agent-return-analysis --holdings` | `评估持仓累计涨幅与涨跌概率` · `1/5/10/30日涨幅` · `量价上涨概率` |
 | [qmt-bridge-market-watch](qmt-bridge-market-watch/SKILL.md) | 自选快照 | `just agent-watchlist --codes ...` | `自选行情快照` · `盘前看下指数和自选涨跌` |
 | [qmt-bridge-sector-theme](qmt-bridge-sector-theme/SKILL.md) | 板块排序 | `just agent-sector-rank --sector 沪深A股` | `板块内涨幅排名` · `今天行业强弱怎么排` |
 | [qmt-bridge-financial-download](qmt-bridge-financial-download/SKILL.md) | 下载财报 | `just agent-download-financial --codes ... --verify` | `下载财报到 Bridge 缓存` · `补全这几只股票的财务数据` |
@@ -41,7 +42,7 @@
 ```
 calendar → watchlist / sector-rank
     → download-financial → fundamental-screen
-    → portfolio-risk → daily-pnl → execution-preview → trading → order-ops → daily-report
+    → return-analysis / watchlist → portfolio-risk → daily-pnl → execution-preview → trading → order-ops → daily-report
 ```
 
 ## 运行方式
@@ -66,7 +67,7 @@ python skills/qmt-bridge-daily-pnl/scripts/daily_pnl_snapshot.py --host 127.0.0.
 
 ## 共享模块
 
-[`_shared/common.py`](_shared/common.py) · [`financial_util.py`](_shared/financial_util.py) · [`positions_util.py`](_shared/positions_util.py) · [`stock_names.py`](_shared/stock_names.py) · [`trading_fmt.py`](_shared/trading_fmt.py) · [`orders_util.py`](_shared/orders_util.py) · [`pnl_util.py`](_shared/pnl_util.py) · [`pnl_display.py`](_shared/pnl_display.py) · [`table_fmt.py`](_shared/table_fmt.py)
+[`_shared/common.py`](_shared/common.py) · [`kline_util.py`](_shared/kline_util.py) · [`financial_util.py`](_shared/financial_util.py) · [`positions_util.py`](_shared/positions_util.py) · [`stock_names.py`](_shared/stock_names.py) · [`trading_fmt.py`](_shared/trading_fmt.py) · [`orders_util.py`](_shared/orders_util.py) · [`pnl_util.py`](_shared/pnl_util.py) · [`pnl_display.py`](_shared/pnl_display.py) · [`table_fmt.py`](_shared/table_fmt.py)
 
 ## Cursor 启用
 

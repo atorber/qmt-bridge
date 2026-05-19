@@ -49,6 +49,7 @@ just agent-<名称> --host 127.0.0.1 --port 8080 --api-key YOUR_KEY
 | `agent-cancel-orders` | 预览 | 撤单 | `撤销 order_id 为 xxx 的委托` |
 | `agent-place-order` | 预览 | 下单 | `用 Bridge 下一笔买入（先预览）` |
 | `agent-liquidate` | 预览 | 清仓 | `清仓某只股票` |
+| `agent-return-analysis` | 是 | 累计涨幅/概率 | `1/5/10/30日涨幅` · `近10日上涨概率` |
 | `agent-watchlist` | 是 | 自选/指数 | `自选行情快照` |
 | `agent-sector-rank` | 是 | 板块排序 | `板块内涨幅排名` |
 | `agent-calendar` | 是 | 交易日历 | `今天是不是交易日` |
