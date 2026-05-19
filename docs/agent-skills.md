@@ -63,7 +63,7 @@ python skills/qmt-bridge-daily-pnl/scripts/daily_pnl_snapshot.py \
 | [qmt-bridge-portfolio-risk](../skills/qmt-bridge-portfolio-risk/SKILL.md) | 组合风险 | `agent-portfolio-risk` | `组合风险快照` · `持仓集中度是否过高` · `下单前现金够不够、有没有 T+1` |
 | [qmt-bridge-daily-pnl](../skills/qmt-bridge-daily-pnl/SKILL.md) | 当日盈亏 | `agent-daily-pnl` | `今天账户盈亏多少` · `分标的列当日盈亏表` · `包含今天买卖和已清仓的盈亏` |
 | [qmt-bridge-order-ops](../skills/qmt-bridge-order-ops/SKILL.md) | 查单、撤单 | `agent-list-orders` | `查今日委托和可撤单` · `撤销 order_id 为 xxx 的委托` |
-| [qmt-bridge-return-analysis](../skills/qmt-bridge-return-analysis/SKILL.md) | 累计涨幅/概率 | `agent-return-analysis` | `1/5/10/30日涨幅多少` · `近10日K线上涨概率` |
+| [qmt-bridge-return-analysis](../skills/qmt-bridge-return-analysis/SKILL.md) | 累计涨幅/概率 | `agent-return-analysis` | `评估持仓涨幅概率并总结明日策略` · `1/5/10/30日阶段强弱` · `量价形态次日统计` |
 | [qmt-bridge-market-watch](../skills/qmt-bridge-market-watch/SKILL.md) | 自选快照 | `agent-watchlist` | `自选行情快照` · `盘前看下指数和自选涨跌` |
 | [qmt-bridge-sector-theme](../skills/qmt-bridge-sector-theme/SKILL.md) | 板块排序 | `agent-sector-rank` | `板块内涨幅排名` · `今天行业强弱怎么排` |
 | [qmt-bridge-financial-download](../skills/qmt-bridge-financial-download/SKILL.md) | 下载财报 | `agent-download-financial` | `下载财报到 Bridge 缓存` · `补全这几只股票的财务数据` |
@@ -91,7 +91,7 @@ calendar → watchlist / sector-rank
 | 阶段 | just 命令 | 说明 | 提示词示例 |
 |------|-----------|------|------------|
 | 日历 | `agent-calendar` | 是否交易日 | `今天是不是交易日` |
-| 强弱 | `agent-return-analysis` / `agent-watchlist` | 阶段涨幅、自选 | `N日累计涨幅` · `涨跌概率` |
+| 强弱 | `agent-return-analysis` / `agent-watchlist` | 持仓/阶段涨幅 | `评估持仓涨幅概率并总结明日策略` · `指定股票 N 日涨幅对比` |
 | 看盘 | `agent-sector-rank` | 板块 | `板块内涨幅排名` |
 | 研究 | `agent-download-financial` / `agent-screen-financial` | 财报 | `下载财报到 Bridge 缓存` · `按 ROE、EPS 做基本面筛选` |
 | 风控 | `agent-portfolio-risk` | 集中度、现金 | `组合风险快照` · `下单前现金够不够` |
@@ -122,6 +122,25 @@ Skill：[qmt-bridge-daily-pnl](../skills/qmt-bridge-daily-pnl/SKILL.md)
 | `--min-pnl 500` | 仅显示 \|当日盈亏\| ≥ 500 的标的 |
 
 优先使用 QMT 返回的 `today_profit_loss`；与柜台可能有手续费等细微差异。
+
+## 累计涨幅与涨跌概率（return-analysis）
+
+Skill：[qmt-bridge-return-analysis](../skills/qmt-bridge-return-analysis/SKILL.md)
+
+**1/2/3/4/5/10/30 日**累计涨幅 + **形态/量价**历史统计 + 报告末尾 **下一交易日策略与观察点**。
+
+```bash
+just agent-return-analysis --holdings --host 127.0.0.1 --port 8080 --api-key YOUR_KEY
+```
+
+| 提示词（示例） | 说明 |
+|----------------|------|
+| `评估当前持仓的 1/5/10/30 日累计涨幅、量价涨跌概率，并总结明日操作策略与观察点` | 推荐；走 `--holdings` |
+| `分析 300394.SZ、688008.SH 阶段强弱和近 10 日上涨概率` | 走 `--codes` |
+| `结合成交量看持仓明日收涨概率` | 量价指标 + 近 10 日放量占比 |
+| `根据报告给组合写明日优先观察哪几只` | 策略总结块（`day_strategy`） |
+
+`--holdings` 需 API Key；缺日 K 自动 `download_batch`。更多提示词见 Skill 文档「提示词示例」表。
 
 ## 分类索引（脚本）
 

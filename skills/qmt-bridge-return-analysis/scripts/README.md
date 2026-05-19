@@ -9,3 +9,5 @@ just agent-return-analysis --holdings --host 127.0.0.1 --port 8080 --api-key KEY
 just agent-return-analysis --codes 000001.SZ,600519.SH
 just agent-return-analysis --codes 300394.SZ --pattern-len 9 --json
 ```
+
+**提示词**：`评估持仓涨幅概率并总结明日策略` · `1/5/10/30日阶段强弱` · `量价形态次日统计`
