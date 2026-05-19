@@ -39,7 +39,7 @@ just build                # 构建 wheel
 
 ## Agent Skills
 
-交易相关任务遵循 `skills/qmt-bridge-trading/SKILL.md`（持仓、下单、批量下单、撤单、清仓）。财报下载见 `skills/qmt-bridge-financial-download/SKILL.md`。全量 Skill 与 `just agent-*` 见 `skills/README.md`、`skills/ROADMAP.md`（18 个 Skill 均已提供脚本）。
+交易相关任务遵循 `skills/qmt-bridge-trading/SKILL.md`（持仓、下单、批量下单、撤单、清仓）。财报下载见 `skills/qmt-bridge-financial-download/SKILL.md`。全量 Skill 与 `just agent-*` 见 `skills/README.md`、`skills/ROADMAP.md`（19 个 Skill 均已提供脚本）。
 
 ## 开发规范
 

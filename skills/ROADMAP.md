@@ -16,6 +16,7 @@
 | P0 | [qmt-bridge-trading](qmt-bridge-trading/SKILL.md) | ✅ | `trading_status.py`, `place_order.py`, `liquidate.py` |
 | P0 | [qmt-bridge-execution-review](qmt-bridge-execution-review/SKILL.md) | ✅ | `daily_trade_report.py` |
 | P0 | [qmt-bridge-portfolio-risk](qmt-bridge-portfolio-risk/SKILL.md) | ✅ | `portfolio_snapshot.py` |
+| P0 | [qmt-bridge-daily-pnl](qmt-bridge-daily-pnl/SKILL.md) | ✅ | `daily_pnl_snapshot.py` |
 | P0 | [qmt-bridge-order-ops](qmt-bridge-order-ops/SKILL.md) | ✅ | `list_orders.py`, `cancel_orders.py` |
 | P1 | [qmt-bridge-market-watch](qmt-bridge-market-watch/SKILL.md) | ✅ | `watchlist_snapshot.py` |
 | P1 | [qmt-bridge-sector-theme](qmt-bridge-sector-theme/SKILL.md) | ✅ | `sector_rank.py` |
@@ -38,6 +39,7 @@
 just agent-trading-status
 just agent-daily-report
 just agent-portfolio-risk
+just agent-daily-pnl
 just agent-list-orders
 just agent-watchlist --codes 000001.SZ
 just agent-formula-check --list

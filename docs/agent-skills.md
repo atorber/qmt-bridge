@@ -1,6 +1,6 @@
 # Agent Skills
 
-QMT Bridge 在 [`skills/`](../skills/) 提供 **18 个 Agent Skills**，均已配套可执行 Python 脚本与 `just` 快捷命令。
+QMT Bridge 在 [`skills/`](../skills/) 提供 **19 个 Agent Skills**，均已配套可执行 Python 脚本与 `just` 快捷命令。
 
 **路线图**：[skills/ROADMAP.md](../skills/ROADMAP.md) · **总览**：[skills/README.md](../skills/README.md)
 
@@ -38,6 +38,7 @@ Windows 终端中文乱码可执行：`chcp 65001` 或设置 `PYTHONIOENCODING=u
 | Skill | 脚本 |
 |-------|------|
 | [portfolio-risk](../skills/qmt-bridge-portfolio-risk/SKILL.md) | `portfolio_snapshot` |
+| [daily-pnl](../skills/qmt-bridge-daily-pnl/SKILL.md) | `daily_pnl_snapshot` |
 | [execution-review](../skills/qmt-bridge-execution-review/SKILL.md) | `daily_trade_report` |
 
 ### 研究 ✅

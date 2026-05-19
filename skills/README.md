@@ -2,7 +2,7 @@
 
 
 
-本目录包含与 **QMT Bridge** 配套的 [Agent Skills](https://docs.cursor.com/context/skills)。**18 个 Skill** 均已提供可执行脚本（见 [ROADMAP.md](ROADMAP.md)）。
+本目录包含与 **QMT Bridge** 配套的 [Agent Skills](https://docs.cursor.com/context/skills)。**19 个 Skill** 均已提供可执行脚本（见 [ROADMAP.md](ROADMAP.md)）。
 
 
 
@@ -19,6 +19,8 @@
 | [qmt-bridge-execution-review](qmt-bridge-execution-review/SKILL.md) | 当日复盘 | `just agent-daily-report` |
 
 | [qmt-bridge-portfolio-risk](qmt-bridge-portfolio-risk/SKILL.md) | 组合风险 | `just agent-portfolio-risk` |
+
+| [qmt-bridge-daily-pnl](qmt-bridge-daily-pnl/SKILL.md) | 当日盈亏 | `just agent-daily-pnl` |
 
 | [qmt-bridge-order-ops](qmt-bridge-order-ops/SKILL.md) | 查单、撤单 | `just agent-list-orders` |
 
@@ -62,7 +64,7 @@ calendar → watchlist / sector-rank
 
     → download-financial → fundamental-screen
 
-    → portfolio-risk → execution-preview → trading → order-ops → daily-report
+    → portfolio-risk → daily-pnl → execution-preview → trading → order-ops → daily-report
 
 ```
 
