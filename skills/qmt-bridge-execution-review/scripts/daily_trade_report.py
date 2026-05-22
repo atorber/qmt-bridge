@@ -5,6 +5,7 @@
     python skills/qmt-bridge-execution-review/scripts/daily_trade_report.py
     python skills/qmt-bridge-execution-review/scripts/daily_trade_report.py --port 8080 --api-key KEY
     python skills/qmt-bridge-execution-review/scripts/daily_trade_report.py --json
+    python skills/qmt-bridge-execution-review/scripts/daily_trade_report.py --feishu-md
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 _SHARED = Path(__file__).resolve().parents[2] / "_shared"
@@ -28,9 +29,12 @@ from common import (  # noqa: E402
 )
 from execution_review_eval import (  # noqa: E402
     build_operation_evaluation,
+    fetch_eval_market_context,
     format_operation_evaluation,
     operation_eval_to_dict,
 )
+from execution_review_feishu_md import build_daily_eval_feishu_markdown  # noqa: E402
+from feishu_doc import DOC_TYPES  # noqa: E402
 from orders_util import as_list, print_orders_table, summarize_by_stock  # noqa: E402
 from pnl_util import (  # noqa: E402
     TradeDaySummary,
@@ -40,6 +44,8 @@ from pnl_util import (  # noqa: E402
 )
 from stock_names import collect_stock_codes, fetch_stock_names  # noqa: E402
 from trading_fmt import pick  # noqa: E402
+
+_REPO = Path(__file__).resolve().parents[3]
 
 _DAILY_PNL_KEYS = (
     "today_profit_loss",
@@ -99,7 +105,7 @@ def _fetch_pnl_breakdowns(client, account_id: str, trades: list[dict]):
                 allow_tick=True,
             )
         )
-    return breakdowns
+    return breakdowns, tick_map
 
 
 def main() -> int:
@@ -113,6 +119,25 @@ def main() -> int:
         "--no-eval",
         action="store_true",
         help="不输出当日操作评价",
+    )
+    parser.add_argument(
+        "--market-turnover-yi",
+        type=float,
+        default=None,
+        metavar="YI",
+        help="两市成交额（亿元），用于交易观量能分区评价",
+    )
+    parser.add_argument(
+        "--no-philosophy-fetch",
+        action="store_true",
+        help="不拉取指数/近3日涨幅（仅用当日 tick 评价）",
+    )
+    parser.add_argument(
+        "--feishu-md",
+        nargs="?",
+        const=DOC_TYPES["daily-eval"].local_md,
+        metavar="PATH",
+        help="导出飞书 Markdown 全文（默认 reports/feishu_daily_eval.md）",
     )
     args = parser.parse_args()
 
@@ -146,7 +171,12 @@ def main() -> int:
     op_eval = None
     breakdowns = []
     if not args.no_eval:
-        breakdowns = _fetch_pnl_breakdowns(client, account_id, trades)
+        breakdowns, tick_map = _fetch_pnl_breakdowns(client, account_id, trades)
+        eval_codes = [b.stock_code for b in breakdowns if b.stock_code]
+        cum3: dict[str, float | None] = {}
+        index_avg: float | None = None
+        if not args.no_philosophy_fetch:
+            _, cum3, index_avg = fetch_eval_market_context(client, eval_codes)
         op_eval = build_operation_evaluation(
             orders=orders,
             trades=trades,
@@ -154,7 +184,36 @@ def main() -> int:
             asset=asset,
             name_map=name_map,
             cancelled_count=cancelled,
+            market_turnover_yi=args.market_turnover_yi,
+            cumulative_3d_pct=cum3,
+            index_avg_pct=index_avg,
+            tick_map=tick_map,
         )
+
+    if args.feishu_md:
+        out = Path(args.feishu_md)
+        if not out.is_absolute():
+            out = _REPO / out
+        synced = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        trade_date = date.today().isoformat()
+        md = build_daily_eval_feishu_markdown(
+            trade_date=trade_date,
+            synced_at=synced,
+            account_id=account_id,
+            health=health,
+            account_status=acct,
+            orders=orders,
+            trades=trades,
+            name_map=name_map,
+            filled=filled,
+            cancelled=cancelled,
+            op_eval=op_eval,
+            include_trades=not args.no_trades,
+            include_summary=not args.no_summary,
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(md, encoding="utf-8")
+        print(f"已写入飞书 Markdown: {out}", file=sys.stderr)
 
     if args.json:
         payload = {

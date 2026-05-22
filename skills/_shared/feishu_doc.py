@@ -125,3 +125,34 @@ def resolve_doc_token(spec: DocTypeSpec) -> str | None:
     if spec.key in file_ids:
         return file_ids[spec.key]
     return spec.default_doc_id
+
+
+def resolve_wiki_parent_token(
+    *,
+    user_parent: str | None = None,
+    doc_type_key: str = "daily-eval",
+) -> str | None:
+    """解析 wiki 父节点 token。
+
+    优先级：用户对话指定 > 环境变量 > feishu_doc_ids.json。
+    未配置则返回 None，Agent 应在知识库根创建（不传 --parent-node-token）。
+    """
+    if user_parent and user_parent.strip():
+        return user_parent.strip()
+    env_key = "FEISHU_DAILY_EVAL_WIKI_PARENT_TOKEN"
+    if doc_type_key != "daily-eval":
+        env_key = f"FEISHU_{doc_type_key.upper().replace('-', '_')}_WIKI_PARENT_TOKEN"
+    env_val = os.environ.get(env_key, "").strip()
+    if env_val:
+        return env_val
+    file_ids = load_doc_ids()
+    parent = file_ids.get(f"{doc_type_key}-wiki-parent", "").strip()
+    return parent or None
+
+
+def parse_wiki_token_from_url(url_or_token: str) -> str:
+    """从飞书 wiki URL 或裸 token 提取 node_token。"""
+    s = (url_or_token or "").strip()
+    if "/wiki/" in s:
+        return s.split("/wiki/", 1)[-1].split("?")[0].split("/")[0].strip()
+    return s

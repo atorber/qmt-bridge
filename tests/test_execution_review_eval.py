@@ -50,3 +50,5 @@ def test_build_operation_evaluation():
     assert ev.overall_score >= 5
     assert len(ev.stocks) == 2
     assert any(s.operation_label == "大涨止盈" for s in ev.stocks)
+    assert ev.philosophy is not None
+    assert ev.philosophy.sector_summary.startswith("持仓板块")
