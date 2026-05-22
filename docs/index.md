@@ -39,8 +39,8 @@ Mac / Linux (主力机)                    Windows (中转站)
 ## 安装
 
 ```bash
-git clone https://github.com/qmt-bridge/qmt-bridge.git
-cd qmt-bridge
+git clone https://github.com/atorber/qmt-trading-skill.git
+cd qmt-trading-skill
 
 # 安装服务端（含 WebSocket 支持）
 pip install -e ".[full]"
@@ -54,4 +54,4 @@ pip install -e ".[client]"
 
 ## 许可
 
-[MIT](https://github.com/qmt-bridge/qmt-bridge/blob/main/LICENSE)
+[MIT](https://github.com/atorber/qmt-trading-skill/blob/main/LICENSE)

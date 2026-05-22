@@ -18,8 +18,8 @@
 ## 1. 安装
 
 ```bash
-git clone https://github.com/qmt-bridge/qmt-bridge.git
-cd qmt-bridge
+git clone https://github.com/atorber/qmt-trading-skill.git
+cd qmt-trading-skill
 
 # 安装服务端（含 WebSocket 支持）
 pip install -e ".[full]"

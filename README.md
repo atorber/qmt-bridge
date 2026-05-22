@@ -112,8 +112,8 @@ calendar → watchlist / sector-rank
 ### 第一步：安装与配置（Windows）
 
 ```bash
-git clone https://github.com/atorber/qmt-bridge.git
-cd qmt-bridge
+git clone https://github.com/atorber/qmt-trading-skill.git
+cd qmt-trading-skill
 pip install -e ".[full]"
 
 cp .env.example .env
@@ -279,6 +279,10 @@ pytest tests/test_skills_smoke.py -q          # Skill 脚本 smoke
 运行中的 `/docs`，或 [docs/api/](docs/api/index.md)。README 以 Skill 工作流为主，不重复罗列全部端点。
 
 ---
+
+## 感谢
+
+本项目最初 fork 自 [atompilot/qmt-bridge](https://github.com/atompilot/qmt-bridge)，在此向原作者致以感谢与敬意。
 
 ## License
 
