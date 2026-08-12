@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 # --- 量能（亿元，两市成交额，由调用方传入或 --market-turnover-yi）---
 TURNOVER_CAUTIOUS_MAX_YI = 10_000.0  # <1万亿
-TURNOVER_MODERATE_MAX_YI = 15_000.0  # 1～1.5万亿
+TURNOVER_MODERATE_MAX_YI = 28_500.0  # 1～2.85万亿；≥2.85万亿才算高热区
 
 # --- 止盈 / 低吸 / 追涨 ---
 TAKE_PROFIT_1D_PCT = 5.0  # 单日涨幅偏离大 → 宜分步止盈
@@ -235,11 +235,11 @@ def classify_volume_zone(turnover_yi: float | None) -> VolumeZone | None:
     if turnover_yi < TURNOVER_MODERATE_MAX_YI:
         return VolumeZone(
             label="适度参与区",
-            guidance=f"成交额约 {turnover_yi:,.0f} 亿（1～1.5万亿）：结构性行情，控制仓位",
+            guidance=f"成交额约 {turnover_yi:,.0f} 亿（1～2.85万亿）：结构性行情，控制仓位",
         )
     return VolumeZone(
-        label="≥1.5万亿区",
-        guidance=f"成交额约 {turnover_yi:,.0f} 亿（≥1.5万亿）：可积极但须观察能否持续",
+        label="≥2.85万亿区",
+        guidance=f"成交额约 {turnover_yi:,.0f} 亿（≥2.85万亿）：高热区，可积极但须观察能否持续",
     )
 
 
@@ -317,7 +317,7 @@ def assess_market_heat(
     heat = "温和"
     if active_n >= len(days) and len(days) >= 3:
         heat = "持续高热"
-        aligned.append("近3日两市均≥1.5万亿，量能维持高位，市场热度偏强")
+        aligned.append("近3日两市均≥2.85万亿，量能维持高位，市场热度偏强")
     elif active_n >= 2 and (monotonic_up or chg_span >= HEAT_TREND_UP_PCT):
         heat = "热度升温"
         aligned.append(
@@ -390,7 +390,7 @@ def apply_trading_philosophy(
     else:
         out.volume_note = (
             "未提供两市成交额（可用 --market-turnover-yi 传入，单位：亿元）；"
-            "请人工对照：<1万亿谨慎、1～1.5万亿适度、≥1.5万亿且持续可积极"
+            "请人工对照：<1万亿谨慎、1～2.85万亿适度、≥2.85万亿高热且持续可积极"
         )
 
     heat_label, heat_summary, heat_aligned, heat_alerts, resolved_days = assess_market_heat(

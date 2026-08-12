@@ -31,9 +31,9 @@ def test_classify_sector():
 
 def test_assess_market_heat_sustained():
     hist = [
-        TurnoverDay("20260520", 16000, "≥1.5万亿区"),
-        TurnoverDay("20260521", 17000, "≥1.5万亿区"),
-        TurnoverDay("20260522", 16500, "≥1.5万亿区"),
+        TurnoverDay("20260520", 29000, "≥2.85万亿区"),
+        TurnoverDay("20260521", 29500, "≥2.85万亿区"),
+        TurnoverDay("20260522", 28800, "≥2.85万亿区"),
     ]
     label, summary, aligned, alerts, days = assess_market_heat(hist)
     assert label == "持续高热"
@@ -44,8 +44,8 @@ def test_assess_market_heat_sustained():
 
 def test_assess_market_heat_cooling():
     hist = [
-        TurnoverDay("20260520", 18000, "≥1.5万亿区"),
-        TurnoverDay("20260521", 15000, "≥1.5万亿区"),
+        TurnoverDay("20260520", 29000, "≥2.85万亿区"),
+        TurnoverDay("20260521", 27000, "适度参与区"),
         TurnoverDay("20260522", 9000, "谨慎区"),
     ]
     label, _, _, alerts, _ = assess_market_heat(hist)
@@ -58,6 +58,12 @@ def test_volume_zone():
     assert z is not None and z.label == "谨慎区"
     z2 = classify_volume_zone(12000)
     assert z2 is not None and z2.label == "适度参与区"
+    z3 = classify_volume_zone(20000)
+    assert z3 is not None and z3.label == "适度参与区"
+    z4 = classify_volume_zone(25000)
+    assert z4 is not None and z4.label == "适度参与区"
+    z5 = classify_volume_zone(28500)
+    assert z5 is not None and z5.label == "≥2.85万亿区"
 
 
 def test_chase_by_high_buy_price():
