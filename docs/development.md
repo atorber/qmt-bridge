@@ -1,6 +1,6 @@
 # 开发指南
 
-常用命令在 **QMT Bridge** 仓库根目录执行。
+常用命令在 **QMT Bridge** 仓库根目录执行。本仓 CI 只跑 API 契约测试；Agent Skills 测试在 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)。
 
 ## 安装与依赖
 

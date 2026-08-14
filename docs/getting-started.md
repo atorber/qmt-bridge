@@ -13,7 +13,7 @@
 ### 网络
 
 - Windows 和你的主力机在同一局域网下（连同一个路由器 / WiFi）
-- Windows 防火墙放行本项目使用的端口（默认 8000）
+- Windows 防火墙放行本项目使用的端口（代码默认 **8000**，以 `.env` 的 `QMT_BRIDGE_PORT` 为准）
 
 ## 1. 安装
 
@@ -116,13 +116,13 @@ pm2 start ecosystem.config.cjs --only qmt-scheduler
 在你的 Mac/Linux 浏览器中访问：
 
 ```
-http://<Windows局域网IP>:8000/docs
+http://<Windows局域网IP>:<端口>/docs
 ```
 
-看到 Swagger 文档页面即表示服务正常。也可以用 curl 检查：
+端口以启动参数或 `.env` 为准（未配置时为 8000）。看到 Swagger 文档页面即表示服务正常。也可以用 curl 检查：
 
 ```bash
-curl http://<Windows局域网IP>:8000/api/meta/health
+curl http://<Windows局域网IP>:<端口>/api/meta/health
 ```
 
 ## Python 客户端用法

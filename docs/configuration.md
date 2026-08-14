@@ -18,7 +18,7 @@
 | `QMT_BRIDGE_CREDIT_ACCOUNT_ID` | `--credit-account-id` | _(空)_ | 信用两融账户 ID |
 | `QMT_BRIDGE_DEFAULT_ACCOUNT` | `--default-account` | `stock` | 默认 API/订阅账户：`stock` \| `credit` |
 
-HTTP 客户端请连接 `127.0.0.1` 或本机局域网 IP，不要把服务端监听地址 `0.0.0.0` 当作请求目标。
+HTTP 客户端请连接 `127.0.0.1` 或本机局域网 IP，不要把服务端监听地址 `0.0.0.0` 当作请求目标。`.env.example` 里的端口可能与代码默认值 `8000` 不同，以你实际写入 `.env` 的值为准；[qmt-trading-skill](https://github.com/atorber/qmt-trading-skill) 的客户端 `.env` 必须与此一致。
 
 ## .env 文件示例
 
@@ -29,7 +29,7 @@ HTTP 客户端请连接 `127.0.0.1` 或本机局域网 IP，不要把服务端�
 # 监听地址 (0.0.0.0 表示允许局域网访问)
 QMT_BRIDGE_HOST=0.0.0.0
 
-# 监听端口
+# 监听端口（代码默认 8000；与客户端 / Skill 保持一致）
 QMT_BRIDGE_PORT=8000
 
 # uvicorn 日志级别: critical/error/warning/info/debug

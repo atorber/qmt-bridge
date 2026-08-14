@@ -40,7 +40,7 @@ python -m build                           # 构建 wheel
 
 ## 相关仓库
 
-自然语言交易工作流在独立仓库 **qmt-trading-skill**。本仓不包含 `skills/`。
+自然语言交易工作流在独立仓库 **[qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)**。本仓不包含 `skills/`。PyPI 发布与 Pages 仅覆盖本仓 API 文档。
 
 ## 开发规范
 

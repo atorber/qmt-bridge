@@ -13,7 +13,7 @@
                                        └─────────────────────────┘
 ```
 
-自然语言交易工作流见独立仓库 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)。
+本仓库**只提供 API 与 Python 客户端**。自然语言交易 / 复盘工作流已迁至独立仓库 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)（不再包含 `skills/`）。
 
 ## 安装
 
@@ -38,7 +38,7 @@ qmt-server --port 8080 --trading --api-key your-secret-key \
   --stock-account-id 普通账户ID --credit-account-id 信用账户ID
 ```
 
-验证：`http://127.0.0.1:8080/docs` 或 `GET /api/meta/health`。长期运行见 `scripts/pm2-start.bat`。
+代码默认端口 **8000**；若 `.env` 里改了 `QMT_BRIDGE_PORT`，客户端与 Skill 必须用同一端口。验证：`http://127.0.0.1:<端口>/docs` 或 `GET /api/meta/health`。长期运行见 `scripts/pm2-start.bat`。
 
 完整配置见 [docs/configuration.md](docs/configuration.md)。
 

@@ -10,7 +10,7 @@
 └──────────────────────┘                └─────────────────────────┘
 ```
 
-自然语言工作流见独立仓库 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)。
+自然语言工作流见独立仓库 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)（本仓不含 `skills/`）。Agent Skills 文档：[atorber.github.io/qmt-trading-skill](https://atorber.github.io/qmt-trading-skill/)。
 
 ## 核心特性
 
