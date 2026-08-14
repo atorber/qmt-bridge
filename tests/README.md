@@ -24,7 +24,7 @@ python -m pytest tests/ -v
 
 ## 2. 联调测试（真实 Bridge，如 `8080`）
 
-对已启动的 **QMT Bridge**（QMT Trading Skill 的 API 层）发真实 HTTP 请求（Windows 上 QMT + `qmt-server` 需先运行）。
+对已启动的 **QMT Bridge** 发真实 HTTP 请求（Windows 上 QMT + `qmt-server` 需先运行）。
 
 ### 环境变量
 
