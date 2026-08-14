@@ -1,4 +1,4 @@
-# 将 qmt-bridge 包发布到 PyPI（tag v*）。Agent Skills 不走本流程。
+# 将 qmt-bridge-pro 发布到 PyPI（tag v*）。import 仍为 qmt_bridge。
 name: Publish to PyPI
 
 on:
@@ -14,7 +14,7 @@ jobs:
       id-token: write  # OIDC for Trusted Publisher
     environment:
       name: pypi
-      url: https://pypi.org/project/qmt-bridge/
+      url: https://pypi.org/project/qmt-bridge-pro/
 
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
       - name: Verify TestPyPI install
         run: |
           sleep 15  # 等待 TestPyPI 索引更新
-          pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ qmt-bridge
+          pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ qmt-bridge-pro
           python -c "import qmt_bridge; print(f'TestPyPI OK: {qmt_bridge.__version__}')"
         continue-on-error: true
 

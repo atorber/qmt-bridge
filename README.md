@@ -24,7 +24,7 @@ pip install -e ".[full]"
 cp .env.example .env
 ```
 
-仅客户端（零依赖 stdlib）：`pip install qmt-bridge` 或 `pip install -e ".[client]"`。
+仅客户端（零依赖 stdlib）：`pip install qmt-bridge-pro` 或 `pip install -e ".[client]"`。导入仍为 `from qmt_bridge import QMTClient`。
 
 ## 启动
 

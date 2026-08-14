@@ -6,10 +6,10 @@
 
 ```bash
 # 零依赖安装（仅 HTTP）
-pip install qmt-bridge
+pip install qmt-bridge-pro
 
 # 含 WebSocket 订阅支持
-pip install "qmt-bridge[client]"
+pip install "qmt-bridge-pro[client]"
 ```
 
 ## 快速示例

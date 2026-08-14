@@ -3,7 +3,7 @@
 实时行情订阅、全市场行情、L2 千档、交易回报推送等 WebSocket 方法。
 
 !!! tip "依赖"
-    WebSocket 功能需要安装 `websockets` 包：`pip install "qmt-bridge[client]"`
+    WebSocket 功能需要安装 `websockets` 包：`pip install "qmt-bridge-pro[client]"`
 
 ```python
 import asyncio

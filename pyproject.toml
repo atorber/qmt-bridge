@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "qmt-bridge"
+name = "qmt-bridge-pro"
 dynamic = ["version"]
 description = "QMT Bridge：HTTP/WebSocket API + QMTClient，对接 miniQMT 行情与交易"
 readme = "README.md"
@@ -41,7 +41,7 @@ client = ["websockets>=11.0"]
 notify = ["httpx>=0.25"]
 scripts = ["tqdm>=4.60"]
 full = [
-    "qmt-bridge[server,ws,notify,scripts]",
+    "qmt-bridge-pro[server,ws,notify,scripts]",
 ]
 docs = [
     "mkdocs>=1.5",
@@ -57,7 +57,7 @@ dashboard = [
 test = [
     "pytest>=7.4",
     "httpx>=0.25",
-    "qmt-bridge[server]",
+    "qmt-bridge-pro[server]",
 ]
 
 [tool.pytest.ini_options]
