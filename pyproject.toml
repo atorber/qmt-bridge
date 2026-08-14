@@ -5,11 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "qmt-bridge"
 dynamic = ["version"]
-description = "QMT Trading Skill：QMT Bridge（HTTP/WebSocket API）+ Agent Skills，对接 miniQMT，局域网行情、交易与自然语言工作流"
+description = "QMT Bridge：HTTP/WebSocket API + QMTClient，对接 miniQMT 行情与交易"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-authors = [{ name = "QMT Trading Skill Contributors" }]
+authors = [{ name = "QMT Bridge Contributors" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Framework :: FastAPI",
@@ -76,8 +76,8 @@ qmt-server = "qmt_bridge.server.cli:main"
 qmt-scheduler = "qmt_bridge.server.cli:scheduler_main"
 
 [project.urls]
-Homepage = "https://github.com/atorber/qmt-trading-skill"
-Repository = "https://github.com/atorber/qmt-trading-skill"
+Homepage = "https://github.com/atorber/qmt-bridge"
+Repository = "https://github.com/atorber/qmt-bridge"
 
 [tool.hatch.version]
 path = "src/qmt_bridge/_version.py"
@@ -89,7 +89,6 @@ packages = ["src/qmt_bridge"]
 include = [
     "src/qmt_bridge",
     "tests",
-    "skills",
     "README.md",
     "LICENSE",
     "pyproject.toml",

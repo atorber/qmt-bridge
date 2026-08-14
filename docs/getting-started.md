@@ -1,6 +1,6 @@
 # 快速开始
 
-**QMT Trading Skill** 包含两层：**QMT Bridge**（Windows 上运行 `qmt-server`）与 **Agent Skills**（在主力机用自然语言调用 Bridge）。以下先启动 Bridge，再使用 `skills/` 工作流。
+在 Windows 上启动 **QMT Bridge**（`qmt-server`），供局域网内客户端与 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill) 调用。
 
 ## 前提条件
 
@@ -18,8 +18,8 @@
 ## 1. 安装
 
 ```bash
-git clone https://github.com/atorber/qmt-trading-skill.git
-cd qmt-trading-skill
+git clone https://github.com/atorber/qmt-bridge.git
+cd qmt-bridge
 
 # 安装服务端（含 WebSocket 支持）
 pip install -e ".[full]"

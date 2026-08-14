@@ -66,7 +66,7 @@ def add_client_args(parser) -> None:
 
 def _default_account_from_env() -> tuple[str, str]:
     """按 QMT_BRIDGE_STOCK/CREDIT_ACCOUNT_ID 与 DEFAULT_ACCOUNT 解析默认账户。"""
-    from qmt_bridge.server.trading.accounts import resolve_default_trading_account
+    from qmt_bridge.accounts import resolve_default_trading_account
 
     return resolve_default_trading_account(
         stock_account_id=os.environ.get("QMT_BRIDGE_STOCK_ACCOUNT_ID", ""),
@@ -96,7 +96,7 @@ def resolve_connection(args) -> tuple[str, int, str, str, str]:
 
 def resolve_account_type_for_id(account_id: str, explicit_type: str = "") -> str:
     """按显式参数或普通户/信用户配置解析 account_type。"""
-    from qmt_bridge.server.trading.accounts import (
+    from qmt_bridge.accounts import (
         build_account_type_map,
         resolve_account_type,
     )
@@ -123,7 +123,7 @@ def make_client(args, *, require_api_key: bool = True):
         from qmt_bridge import QMTClient
     except ImportError:
         print(
-            "错误: 未安装 qmt-bridge。请在仓库根目录执行: pip install -e .",
+            "错误: 未安装 qmt-bridge。请执行: pip install qmt-bridge 或 pip install -e ./vendor/qmt-bridge",
             file=sys.stderr,
         )
         sys.exit(2)

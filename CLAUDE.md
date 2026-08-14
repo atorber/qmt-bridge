@@ -1,10 +1,10 @@
 # CLAUDE.md — 开发准则
 
-本文件供 Claude Code 参考，确保代码风格和工作流与项目保持一致。
+本文件供开发参考，确保代码风格与 **QMT Bridge** 仓库一致。
 
 ## 项目概览
 
-**QMT Trading Skill**：QMT Bridge（HTTP/WebSocket API）+ Agent Skills（`skills/` 自然语言工作流），对接 miniQMT (xtquant)。
+**QMT Bridge**：HTTP/WebSocket API + `QMTClient`，对接 miniQMT (xtquant)。Agent Skills 在独立仓库 `qmt-trading-skill`。
 
 - **语言**: Python 3.10+
 - **构建**: hatchling (pyproject.toml)
@@ -17,9 +17,9 @@
 src/qmt_bridge/
   server/          # FastAPI 服务端 (routers/, ws/, trading/)
   client/          # Python 客户端 (Mixin 模式)
+  accounts.py      # 账户类型解析（无 FastAPI 依赖）
   _version.py      # 单一版本源
 scripts/           # 独立脚本 (download_all.py 等)
-skills/            # Agent Skills（见 skills/README.md）
 tests/             # pytest 测试
 dashboard/         # Streamlit 仪表盘
 logs/              # 运行日志 (gitignored)
@@ -40,7 +40,7 @@ python -m build                           # 构建 wheel
 
 ## Agent Skills
 
-交易相关任务遵循 `skills/qmt-bridge-trading/SKILL.md`（持仓、下单、批量下单、撤单、清仓）。财报下载见 `skills/qmt-bridge-financial-download/SKILL.md`。全量 Skill 见 `skills/README.md`、`skills/ROADMAP.md`（21 个 Skill，自然语言或 `@` Skill 触发，由 Agent 执行 `skills/*/scripts/*.py`）。飞书文档上传见 `skills/qmt-bridge-feishu-doc/SKILL.md`（lark-cli + lark-doc，无 scripts/ 飞书脚本）。
+自然语言工作流在独立仓库 **qmt-trading-skill**（可 git submodule 到 `vendor/qmt-bridge` 对照本仓实现）。本仓不包含 `skills/`。
 
 ## 开发规范
 
@@ -61,7 +61,6 @@ python -m build                           # 构建 wheel
 
 - 优先编辑现有文件，避免不必要的新建文件
 - 独立脚本放 `scripts/`，保持可单独运行（不 import 项目内部模块的非公开 API）
-- 新增 `scripts/` 脚本时在对应 Skill 的 `SKILL.md` 中补充调用示例
 
 ### 依赖管理
 

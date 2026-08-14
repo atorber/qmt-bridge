@@ -1,6 +1,6 @@
 """账户类型解析单元测试。"""
 
-from qmt_bridge.server.trading.accounts import (
+from qmt_bridge.accounts import (
     build_account_type_map,
     normalize_account_type,
     resolve_account_type,
