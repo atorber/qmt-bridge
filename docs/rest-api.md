@@ -1,276 +1,903 @@
 # REST API 端点速查
 
 !!! tip "交互式文档"
-    服务运行后，访问 `http://<host>:8000/docs` (Swagger UI) 或 `http://<host>:8000/redoc` (ReDoc) 可获得交互式 API 文档，支持在线测试。
+    服务运行后，访问 `http://<host>:8080/docs`（Swagger UI）或 `http://<host>:8080/redoc`（ReDoc）可在线查看并测试。本文与路由实现（`src/qmt_bridge/server/routers/`、`models.py`）对齐。
+
+## 约定
+
+| 项 | 说明 |
+|----|------|
+| 代码格式 | 如 `000001.SZ`、`600519.SH`、`000300.SH` |
+| 时间格式 | `YYYYMMDD` 或 `YYYYMMDDHHmmss`；空字符串表示不限制 |
+| 多代码 Query | 逗号分隔：`stocks=000001.SZ,600519.SH` |
+| JSON 列表字段 | `stock_list` 与别名 `stocks` 均可（`populate_by_name`） |
+| K 线周期 `period` | `tick` / `1m` / `5m` / `15m` / `30m` / `60m` / `1d` |
+| 除权 `dividend_type` | `none` / `front` / `back` / `front_ratio` / `back_ratio` |
+| 认证 | 交易/信用/资金/SMT/银证：请求头 `X-API-Key`；服务需 `--trading` |
+| 账户 | `account_id` 空则用服务端默认账户；`account_type` 为 `STOCK` 或 `CREDIT` |
+
+**响应包装**（按端点不同）：
+
+- 多数查询：`{"data": ...}`，或带业务键如 `{"stock", "data"}` / `{"sectors"}`
+- 写操作常见：`{"status": "ok", "data": ...}`
+- `ok_response()`：`{"code": 0, "message": "ok", "data": ...}`
+- `data` 多为 xtquant 序列化结果（对象属性展开为 dict/list），字段随 QMT 版本变化
+
+**HTTP 错误**：参数校验失败 `422`；交易认证失败 `401`/`403`；部分行情超时 `504`、底层失败 `502`、锁等待超时 `503`。
+
+---
 
 ## Legacy 端点（向后兼容）
 
+建议改用对应新路径。GET 用 Query；`POST /api/download` 用 JSON Body。
+
+### `GET /api/history`
+
+单只历史 K 线。替代：`/api/market/market_data` 或 `/api/market/market_data_ex`。
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| stock | Query | string | 是 | | 如 `000001.SZ` |
+| period | Query | string | 否 | `1d` | K 线周期 |
+| count | Query | int | 否 | `100` | 条数 |
+| fields | Query | string | 否 | `open,high,low,close,volume` | 逗号分隔字段 |
+
+**响应**
+
+```json
+{"stock": "000001.SZ", "period": "1d", "count": 100, "data": [{"time": "...", "open": 10.1, "high": 10.2, "low": 10.0, "close": 10.15, "volume": 12345}]}
+```
+
+### `GET /api/batch_history`
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| stocks | Query | string | 是 | | 逗号分隔代码 |
+| period | Query | string | 否 | `1d` | |
+| count | Query | int | 否 | `100` | |
+| fields | Query | string | 否 | `open,high,low,close,volume` | |
+
+**响应**：`{"stocks": [...], "period": "...", "count": 100, "data": {"000001.SZ": [记录...]}}`
+
+### `GET /api/full_tick`
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|------|------|------|------|------|
+| stocks | Query | string | 是 | 逗号分隔 |
+
+**响应**：`{"data": {"000001.SZ": {快照字段...}}}`
+
+### `GET /api/sector_stocks`
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|------|------|------|------|------|
+| sector | Query | string | 是 | 板块名，如 `沪深A股` |
+
+**响应**：`{"sector": "沪深A股", "stocks": ["000001.SZ", ...]}`
+
+### `GET /api/instrument_detail`
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|------|------|------|------|------|
+| stock | Query | string | 是 | |
+
+**响应**：`{"stock": "...", "detail": {...}}`
+
+### `POST /api/download`
+
+JSON Body：
+
+| 字段 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|
+| stock | string | 是 | | |
+| period | string | 否 | `1d` | |
+| start | string | 否 | `""` | 开始时间 |
+| end | string | 否 | `""` | 结束时间 |
+
+**响应**：`{"status": <下载状态>, "stock": "...", "period": "1d"}`
+
+---
+
+## Market — 行情 `/api/market/*`
+
+### `GET /api/market/full_tick`
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|------|------|------|------|------|
+| stocks | Query | string | 是 | 逗号分隔，个股/指数 |
+
+**响应**：`{"data": {代码: 快照}}`。快照常见字段含最新价、涨跌、买卖盘等（随 xtquant）。
+
+### `GET /api/market/indices`
+
+无参数。固定查询：上证、深成、创业板、沪深300、上证50、中证500、中证1000。
+
+**响应**：`{"indices": ["000001.SH", ...], "data": {代码: 快照}}`
+
+### `GET /api/market/market_data_ex`
+
+增强 K 线（推荐）。
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| stocks | Query | string | 是 | | 逗号分隔 |
+| period | Query | string | 否 | `1d` | |
+| start_time | Query | string | 否 | `""` | |
+| end_time | Query | string | 否 | `""` | |
+| count | Query | int | 否 | `-1` | `-1` 不限 |
+| dividend_type | Query | string | 否 | `none` | |
+| fill_data | Query | bool | 否 | `true` | 填充空档 |
+
+**响应**：`{"data": {"000001.SZ": [{"time": "...", "open": ..., "high": ..., "low": ..., "close": ..., "volume": ...}, ...]}}`
+
+### `GET /api/market/local_data`
+
+参数同 `market_data_ex`。只读本地缓存，不向行情服务器补数。
+
+**响应**：同 `market_data_ex`。
+
+### `GET /api/market/divid_factors`
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| stock | Query | string | 是 | | 单只 |
+| start_time | Query | string | 否 | `""` | |
+| end_time | Query | string | 否 | `""` | |
+| timeout_sec | Query | float | 否 | 服务端默认 | `0.5~120`，覆盖 `QMT_BRIDGE_DIVID_FACTORS_TIMEOUT_SEC`（默认 8s） |
+
+**响应**：`{"stock": "...", "data": [...]}`
+
+**错误**：超时 `504`；底层异常/无数据 `502`；xtdata 锁等待超时 `503`（`QMT_BRIDGE_XTDATA_LOCK_WAIT_TIMEOUT_SEC`，默认 15s）。
+
+### `GET /api/market/market_data`
+
+原始 `get_market_data`，按字段组织后转为记录。
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| stocks | Query | string | 是 | | |
+| fields | Query | string | 否 | `open,high,low,close,volume` | 逗号分隔 |
+| period | Query | string | 否 | `1d` | |
+| start_time / end_time | Query | string | 否 | `""` | |
+| count | Query | int | 否 | `-1` | |
+| dividend_type | Query | string | 否 | `none` | |
+| fill_data | Query | bool | 否 | `true` | |
+| timeout_sec | Query | float | 否 | 服务端默认 | `0.5~180` |
+
+**响应**：`{"data": {"000001.SZ": [记录...]}}`。超时/失败同 divid_factors（`504`/`502`）。
+
+### `GET /api/market/market_data3`
+
+参数同 `market_data`，但 `fields` 默认空（取全部字段），无 `timeout_sec`。
+
+**响应**：`{"data": {代码: [记录...]}}`
+
+### `GET /api/market/full_kline`
+
+| 参数 | 位置 | 类型 | 必填 | 默认 |
+|------|------|------|------|------|
+| stock | Query | string | 是 | |
+| period | Query | string | 否 | `1d` |
+| start_time / end_time | Query | string | 否 | `""` |
+
+**响应**：`{"stock": "...", "data": ...}`
+
+### `GET /api/market/fullspeed_orderbook`
+
+| 参数 | 位置 | 类型 | 必填 |
+|------|------|------|------|
+| stock | Query | string | 是 |
+| start_time / end_time | Query | string | 否 |
+
+**响应**：`{"stock": "...", "data": ...}`（极速委托簿，需对应行情权限）
+
+### `GET /api/market/transactioncount`
+
+参数同 `fullspeed_orderbook`。
+
+**响应**：`{"stock": "...", "data": ...}`
+
+---
+
+## Tick & L2 — `/api/tick/*`
+
+L2 / 千档需对应行情权限。下列接口除特别说明外，Query 均为：
+
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|
+| stock | string | 是 | | |
+| start_time | string | 否 | `""` | |
+| end_time | string | 否 | `""` | |
+| count | int | 否 | `-1` | `-1` 不限 |
+
+**响应（带时间范围的接口）**：`{"stock": "...", "data": ...}`
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/history` | 单只股票历史 K 线 |
-| GET | `/api/batch_history` | 批量获取多只股票历史数据 |
-| GET | `/api/full_tick` | 最新 tick 快照 |
-| GET | `/api/sector_stocks` | 板块成分股列表 |
-| GET | `/api/instrument_detail` | 股票基本信息 |
-| POST | `/api/download` | 触发历史数据下载 |
-
-## Market — 行情数据 `/api/market/*`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/market/full_tick` | 实时行情快照（个股 / 指数） |
-| GET | `/api/market/indices` | 主要指数行情概览 |
-| GET | `/api/market/market_data_ex` | 增强版 K 线（除权、填充） |
-| GET | `/api/market/local_data` | 仅读本地缓存（离线可用） |
-| GET | `/api/market/divid_factors` | 除权因子 |
-| GET | `/api/market/market_data` | 通用行情数据查询 |
-| GET | `/api/market/market_data3` | 行情数据（dict of DataFrame） |
-| GET | `/api/market/full_kline` | 单只股票完整 K 线 |
-| GET | `/api/market/fullspeed_orderbook` | 全速 Order Book |
-| GET | `/api/market/transactioncount` | 成交笔数 |
-
-### `/api/market/divid_factors` 鲁棒性说明
-
-- 可选参数：`timeout_sec`（`0.5~120` 秒），用于覆盖服务端默认超时。
-- 默认超时由环境变量 `QMT_BRIDGE_DIVID_FACTORS_TIMEOUT_SEC` 控制（默认 `8` 秒）。
-- 底层调用超时时返回 `504 Gateway Timeout`，避免请求长期挂起。
-- 底层调用异常时返回 `502 Bad Gateway`。
-- 若全局 xtdata 串行锁等待超时，返回 `503 Service Unavailable`，超时时间由 `QMT_BRIDGE_XTDATA_LOCK_WAIT_TIMEOUT_SEC` 控制（默认 `15` 秒）。
-
-## Tick & L2 — 逐笔数据 `/api/tick/*`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/tick/l2_quote` | L2 行情快照 |
+| GET | `/api/tick/l2_quote` | L2 报价（含 start/end/count） |
 | GET | `/api/tick/l2_order` | L2 逐笔委托 |
 | GET | `/api/tick/l2_transaction` | L2 逐笔成交 |
-| GET | `/api/tick/l2_thousand_quote` | L2 千档行情 |
-| GET | `/api/tick/l2_thousand_orderbook` | L2 千档 Order Book |
-| GET | `/api/tick/l2_thousand_trade` | L2 千档成交 |
-| GET | `/api/tick/l2_thousand_queue` | L2 千档委托队列 |
-| GET | `/api/tick/broker_queue` | 经纪商委托队列 |
+| GET | `/api/tick/l2_thousand_quote` | 千档报价 |
+| GET | `/api/tick/l2_thousand_orderbook` | 千档委托簿 |
+| GET | `/api/tick/l2_thousand_trade` | 千档成交 |
+
+仅 `stock`：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/tick/l2_thousand_queue` | 千档委托队列 |
+| GET | `/api/tick/broker_queue` | 经纪商队列 |
 | GET | `/api/tick/order_rank` | 委托排名 |
 
-## Sector — 板块管理 `/api/sector/*`
+---
 
-| 方法 | 路径 | 说明 |
+## Sector — `/api/sector/*`
+
+JSON 中 `stocks` 与 `stock_list` 等价。
+
+### `GET /api/sector/list`
+
+无参数。**响应**：`{"sectors": ["沪深A股", ...]}`
+
+### `GET /api/sector/stocks`
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| sector | Query | string | 是 | | 如 `沪深A股` |
+| real_timetag | Query | int | 否 | `-1` | 历史毫秒时间戳，`-1` 最新 |
+
+**响应**：`{"sector": "...", "count": 123, "stocks": ["000001.SZ", ...]}`
+
+### `GET /api/sector/info`
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| sector | Query | string | 否 | `""` | 空则全部；不存在时 `{"data": {}}` |
+
+### `POST /api/sector/create_folder`
+
+Body：`{"folder_name": "我的板块"}`  
+**响应**：`{"status": "ok", "data": ...}`
+
+### `POST /api/sector/create`
+
+Body：`{"sector_name": "自选", "parent_node": ""}`（`parent_node` 默认空）
+
+### `POST /api/sector/add_stocks` / `remove_stocks` / `reset`
+
+Body：`{"sector_name": "自选", "stocks": ["000001.SZ"]}`  
+`reset` 用新列表**整体替换**成分股。
+
+### `DELETE /api/sector/remove`
+
+| 参数 | 位置 | 类型 | 必填 |
+|------|------|------|------|
+| sector_name | Query | string | 是 |
+
+---
+
+## Calendar — `/api/calendar/*`
+
+市场代码：`SH` / `SZ` / `IF` / `DF` / `SF` / `ZF` 等。
+
+### `GET /api/calendar/trading_dates`
+
+| 参数 | 位置 | 类型 | 必填 | 默认 |
+|------|------|------|------|------|
+| market | Query | string | 是 | |
+| start_time / end_time | Query | string | 否 | `""` |
+| count | Query | int | 否 | `-1` |
+
+**响应**：`{"market": "SH", "dates": [时间戳或日期, ...]}`
+
+### `GET /api/calendar/holidays`
+
+无参数。**响应**：`{"holidays": [...]}`
+
+### `GET /api/calendar/trading_calendar`
+
+| 参数 | 必填 |
+|------|------|
+| market | 是 |
+| start_time / end_time | 否 |
+
+**响应**：`{"market": "...", "calendar": ...}`
+
+### `GET /api/calendar/trading_period`
+
+| 参数 | 必填 | 说明 |
 |------|------|------|
-| GET | `/api/sector/list` | 所有板块列表 |
-| GET | `/api/sector/stocks` | 板块成分股（支持历史日期） |
-| GET | `/api/sector/info` | 板块元数据 |
-| POST | `/api/sector/create_folder` | 创建板块文件夹 |
-| POST | `/api/sector/create` | 创建自定义板块 |
-| POST | `/api/sector/add_stocks` | 添加成分股 |
-| POST | `/api/sector/remove_stocks` | 移除成分股 |
-| DELETE | `/api/sector/remove` | 删除板块 |
-| POST | `/api/sector/reset` | 重置板块成分股 |
+| stock | 是 | 合约代码 |
 
-## Calendar — 交易日历 `/api/calendar/*`
+**响应**：`{"stock": "...", "periods": ...}`（如 9:30–11:30、13:00–15:00）
 
-| 方法 | 路径 | 说明 |
+### `GET /api/calendar/is_trading_date`
+
+| 参数 | 必填 | 说明 |
 |------|------|------|
-| GET | `/api/calendar/trading_dates` | 交易日列表 |
-| GET | `/api/calendar/holidays` | 节假日列表 |
-| GET | `/api/calendar/trading_calendar` | 完整日历 |
-| GET | `/api/calendar/trading_period` | 交易时段 |
-| GET | `/api/calendar/is_trading_date` | 日期校验 |
-| GET | `/api/calendar/prev_trading_date` | 上一个交易日 |
-| GET | `/api/calendar/next_trading_date` | 下一个交易日 |
-| GET | `/api/calendar/trading_dates_count` | 交易日计数 |
+| market | 是 | |
+| date | 是 | `YYYYMMDD` |
 
-## Financial — 财务数据 `/api/financial/*`
+**响应**：`{"market": "SH", "date": "20260105", "is_trading": true}`
 
-| 方法 | 路径 | 说明 |
+### `GET /api/calendar/prev_trading_date` / `next_trading_date`
+
+| 参数 | 必填 | 默认 | 说明 |
+|------|------|------|------|
+| market | 是 | | |
+| date | 否 | `""`（今天） | 参考日 |
+
+**响应**：`{"market": "...", "prev_trading_date": ...}` 或 `next_trading_date`；不足时可能为 `null`。
+
+### `GET /api/calendar/trading_dates_count`
+
+| 参数 | 必填 |
+|------|------|
+| market | 是 |
+| start_time / end_time | 否 |
+
+**响应**：`{"market": "...", "count": 242}`
+
+---
+
+## Financial — `/api/financial/*`
+
+### `GET /api/financial/data` 与 `GET /api/financial/data_ori`
+
+| 参数 | 位置 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|------|
+| stocks | Query | string | 是 | | 逗号分隔 |
+| tables | Query | string | 否 | `""` | 空=全部。常用：`Balance`、`Income`、`CashFlow` |
+| start_time / end_time | Query | string | 否 | `""` | |
+| report_type | Query | string | 否 | `report_time` | `report_time` / `announce_time` |
+
+**响应**：`{"data": ...}`。`data` 为按股票/表整理的记录；`data_ori` 为原始结构序列化。
+
+---
+
+## Instrument — `/api/instrument/*`
+
+### `GET /api/instrument/detail_list`
+
+| 参数 | 必填 | 默认 | 说明 |
+|------|------|------|------|
+| stocks | 是 | | 逗号分隔 |
+| iscomplete | 否 | `false` | `true` 返回完整字段 |
+
+**响应**：`{"data": {代码: 详情}}`
+
+### `GET /api/instrument/type`
+
+| 参数 | 必填 |
+|------|------|
+| stock | 是 |
+
+**响应**：`{"stock": "...", "type": "stock"}`（如 stock / index / fund）
+
+### `GET /api/instrument/ipo_info`
+
+| 参数 | 必填 |
+|------|------|
+| start_time / end_time | 否 |
+
+**响应**：`{"data": [...]}`
+
+### `GET /api/instrument/index_weight`
+
+| 参数 | 必填 | 说明 |
 |------|------|------|
-| GET | `/api/financial/data` | 财务报表数据（资产负债表 / 利润表等） |
-| GET | `/api/financial/data_ori` | 原始格式财务报表数据 |
+| index_code | 是 | 如 `000300.SH` |
 
-## Instrument — 合约信息 `/api/instrument/*`
+**响应**：`{"index_code": "...", "data": ...}`
 
-| 方法 | 路径 | 说明 |
+### `GET /api/instrument/his_st_data`
+
+| 参数 | 必填 |
+|------|------|
+| stock | 是 |
+
+**响应**：`{"stock": "...", "data": ...}`
+
+---
+
+## Option — `/api/option/*`
+
+### `GET /api/option/detail`
+
+| 参数 | 必填 |
+|------|------|
+| option_code | 是 |
+
+**响应**：`{"option_code": "...", "data": ...}`（行权价、到期日、乘数等）
+
+### `GET /api/option/chain`
+
+| 参数 | 必填 | 说明 |
 |------|------|------|
-| GET | `/api/instrument/detail_list` | 批量合约详情 |
-| GET | `/api/instrument/type` | 代码类型判断 |
-| GET | `/api/instrument/ipo_info` | IPO 信息 |
-| GET | `/api/instrument/index_weight` | 指数成分股权重 |
-| GET | `/api/instrument/his_st_data` | ST 历史 |
+| undl_code | 是 | 标的，如 `000300.SH` |
 
-## Option — 期权 `/api/option/*`
+**响应**：`{"undl_code": "...", "data": ...}`
 
-| 方法 | 路径 | 说明 |
+### `GET /api/option/list`
+
+| 参数 | 必填 | 默认 | 说明 |
+|------|------|------|------|
+| undl_code | 是 | | |
+| dedate | 是 | | 到期日 |
+| opttype | 否 | `""` | 认购/认沽，空不筛 |
+| isavailable | 否 | `false` | 仅可交易 |
+
+**响应**：`{"data": ...}`
+
+### `GET /api/option/his_option_list`
+
+| 参数 | 必填 | 说明 |
 |------|------|------|
-| GET | `/api/option/detail` | 期权合约详情 |
-| GET | `/api/option/chain` | 标的期权链 |
-| GET | `/api/option/list` | 按到期日 / 类型筛选 |
-| GET | `/api/option/his_option_list` | 历史期权列表 |
+| undl_code | 是 | |
+| dedate | 是 | 历史日期 |
+
+**响应**：`{"data": ...}`
+
+---
 
 ## ETF `/api/etf/*`
 
+### `GET /api/etf/list`
+
+无参数。**响应**：`{"count": N, "stocks": ["510300.SH", ...]}`
+
+### `GET /api/etf/info`
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| stock | 是 | 如 `510300.SH` |
+
+**成功响应**
+
+```json
+{
+  "stock": "510300.SH",
+  "name": "...",
+  "nav": 0,
+  "component_count": 300,
+  "components": [{"stock_code": "600519.SH", "volume": 100}],
+  "raw": {}
+}
+```
+
+未找到：`{"stock": "...", "error": "未找到该 ETF 信息"}`
+
+---
+
+## CB — `/api/cb/*`
+
+### `GET /api/cb/list`
+
+无参数。**响应**：`{"count": N, "stocks": [...]}`
+
+### `GET /api/cb/info`
+
+| 参数 | 必填 |
+|------|------|
+| stock | 是 |
+
+**响应**：`{"stock": "...", "data": ...}`（转股价、到期日等）
+
+---
+
+## Futures — `/api/futures/*`
+
+### `GET /api/futures/main_contract` / `sec_main_contract`
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| code_market | 是 | 品种，如 `IF.CFE` |
+| start_time / end_time | 否 | |
+
+**响应**：`{"code_market": "IF.CFE", "data": ...}`
+
+查询前通常需先 `POST /api/download/metatable_data`。
+
+---
+
+## Formula — `/api/formula/*`
+
+### `POST /api/formula/call`
+
+Body：
+
+| 字段 | 类型 | 必填 | 默认 |
+|------|------|------|------|
+| formula_name | string | 是 | |
+| stock_code | string | 是 | |
+| period | string | 否 | `1d` |
+| start_time / end_time | string | 否 | `""` |
+| count | int | 否 | `-1` |
+| dividend_type | string | 否 | `none` |
+| params | object | 否 | `{}` | 额外关键字参数 |
+
+**响应**：`{"data": ...}`
+
+### `POST /api/formula/call_batch`
+
+同 `call`，但 `stock_codes: string[]` 必填（替代 `stock_code`）。
+
+### `POST /api/formula/generate_index_data`
+
+| 字段 | 类型 | 必填 | 默认 |
+|------|------|------|------|
+| index_code | string | 是 | |
+| stocks / stock_list | string[] | 否 | `[]` |
+| weights | float[] | 是 | |
+| period | string | 否 | `1d` |
+| start_time / end_time | string | 否 | `""` |
+
+**响应**：`{"data": ...}`
+
+### `POST /api/formula/create`
+
+Body：`{"formula_name": "...", "formula_file": "...", "formula_type": ""}`  
+**响应**：`{"code": 0, "message": "ok", "data": ...}`
+
+### `POST /api/formula/import`
+
+Body：`{"formula_file": "..."}` → `ok_response`
+
+### `DELETE /api/formula/delete`
+
+Query：`formula_name` 必填 → `ok_response`
+
+### `GET /api/formula/list`
+
+无参数 → `ok_response`（公式列表）
+
+---
+
+## HK — `/api/hk/*`
+
+### `GET /api/hk/stock_list`
+
+无参数。沪港通 + 深港通。**响应**：`{"count": N, "stocks": [...]}`
+
+### `GET /api/hk/connect_stocks`
+
+| 参数 | 必填 | 默认 | 说明 |
+|------|------|------|------|
+| connect_type | 否 | `north` | `north`：沪股通+深股通；`south`：港股通 |
+
+**响应**：`{"connect_type": "north", "count": N, "stocks": [...]}`
+
+### `GET /api/hk/broker_dict`
+
+无参数。**响应**：`{"data": ...}`
+
+---
+
+## Tabular — `/api/tabular/*`
+
+### `GET /api/tabular/data` / `formula`
+
+| 参数 | 必填 | 默认 | 说明 |
+|------|------|------|------|
+| table_name | 是 | | 表名 |
+| stocks | 否 | `""` | 逗号分隔，空=全部 |
+| start_time / end_time | 否 | `""` | |
+
+**响应**：`{"table": "...", "data": ...}`
+
+### `GET /api/tabular/tables`
+
+无参数。**响应**：`{"tables": [...]}`；接口不可用时 `[]`。
+
+---
+
+## Utility — `/api/utility/*`
+
+### `GET /api/utility/stock_name`
+
+| 参数 | 必填 |
+|------|------|
+| stock | 是 |
+
+**响应**：`{"stock": "000001.SZ", "name": "平安银行"}`
+
+### `GET /api/utility/batch_stock_name`
+
+| 参数 | 必填 |
+|------|------|
+| stocks | 是 | 逗号分隔 |
+
+**响应**：`{"data": {"000001.SZ": "平安银行"}}`
+
+### `GET /api/utility/code_to_market`
+
+| 参数 | 必填 |
+|------|------|
+| stock | 是 |
+
+**响应**：`{"stock": "...", "market": "SZ", "type": "..."}`（`market` 取代码后缀）
+
+### `GET /api/utility/search`
+
+| 参数 | 必填 | 默认 | 说明 |
+|------|------|------|------|
+| keyword | 是 | | 代码或中文名 |
+| category | 否 | `沪深A股` | 搜索板块 |
+| limit | 否 | `20` | |
+
+中文关键字会构建名称缓存（首次较慢）。**响应**：`{"keyword": "...", "count": N, "stocks": [...]}`
+
+---
+
+## Meta — `/api/meta/*`
+
+| 方法 | 路径 | 参数 | 响应 |
+|------|------|------|------|
+| GET | `/health` | 无 | `{"status": "ok"}`；`--trading` 时另有 `trading: {enabled, connected, error}` |
+| GET | `/version` | 无 | `{"version": "x.y.z"}` |
+| GET | `/xtdata_version` | 无 | `{"xtdata_version": "..."}` 或 `"unknown"` |
+| GET | `/connection_status` | 无 | `{"connected": true}` 或 `{"connected": false, "error": "..."}` |
+| GET | `/markets` | 无 | `{"markets": [...]}` |
+| GET | `/period_list` | 无 | `{"periods": ["tick", "1m", ...]}` |
+| GET | `/stock_list` | Query `category` **必填**（如 `沪深A股`） | `{"category": "...", "count": N, "stocks": [...]}` |
+| GET | `/last_trade_date` | Query `market` **必填** | `{"market": "SH", "last_trade_date": ...}` |
+| GET | `/quote_server_status` | 无 | `{"data": ...}` 或 `{"error": "..."}` |
+
+`/api/meta/health` **无需** API Key。
+
+---
+
+## Download — `/api/download/*`
+
+均为 POST。无 Body 的接口响应多为 `{"status": "ok"}`。带 `stocks`/`tables` 别名。
+
+### `POST /api/download/history_data2`
+
+Body：`{"stocks": ["000001.SZ"], "period": "1d", "start_time": "20230101", "end_time": ""}`  
+`period` 默认 `1d`。后台下载，进度见 WebSocket `/ws/download_progress`。
+
+**响应**：`{"status": "ok", "stocks": [...], "period": "1d", "result": ...}`
+
+### `POST /api/download/financial_data`
+
+Body：`{"stocks": [...], "tables": ["Balance", "Income"], "start_time": "", "end_time": ""}`  
+异步后台。**响应**：`{"status": "ok", "stocks": [...], "tables": [...]}`
+
+### `POST /api/download/financial_data2`
+
+Body：`{"stocks": [...], "tables": [...]}`（无时间范围）。**同步阻塞**。响应同上。
+
+### 无 Body（多为启动时自动预下载，每 24h 刷新）
+
+| 路径 | 说明 |
+|------|------|
+| `/sector_data` | 板块成分 |
+| `/index_weight` | 指数权重 |
+| `/etf_info` | ETF 申赎 |
+| `/cb_data` | 可转债 |
+| `/history_contracts` | 过期合约 |
+| `/metatable_data` | 合约元数据（查期货前建议调用） |
+| `/holiday_data` | 节假日 |
+
+### `POST /api/download/his_st_data`
+
+Body：`{"stocks": [...], "period": "1d", "start_time": "", "end_time": ""}`  
+**响应**：`{"status": "ok", "stocks": [...], "result": ...}`
+
+### `POST /api/download/tabular_data`
+
+Body：`{"tables": ["表名"]}`  
+**响应**：`{"status": "ok", "tables": [...], "result": ...}`
+
+---
+
+## Trading — `/api/trading/*` :material-lock:
+
+请求头：`X-API-Key`。`order_type` / `price_type` 对齐 xtquant 常量（如限价、市价等）。
+
+### `POST /api/trading/order`
+
+Body：
+
+| 字段 | 类型 | 必填 | 默认 |
+|------|------|------|------|
+| stock_code | string | 是 | |
+| order_type | int | 是 | |
+| order_volume | int | 是 | |
+| price_type | int | 否 | `5` |
+| price | float | 否 | `0.0` |
+| account_id | string | 否 | `""` |
+| strategy_name | string | 否 | `""` |
+| order_remark | string | 否 | `""` |
+
+**响应**：`{"order_id": <委托号>, "status": "submitted"}`
+
+### `POST /api/trading/order_async`
+
+Body 字段同 `order`。**响应**：`{"seq": <异步序号>, "status": "async_submitted"}`
+
+### `POST /api/trading/cancel`
+
+Body：`{"order_id": 123, "account_id": ""}`  
+**响应**：`{"status": "ok", "data": ...}`
+
+### `POST /api/trading/cancel_async`
+
+Body 同 `cancel`。**响应**：`{"seq": ..., "status": "async_submitted"}`
+
+### `POST /api/trading/cancel_by_sysid` / `cancel_by_sysid_async`
+
+Body：`{"market": "SZ", "sysid": "...", "account_id": ""}`  
+**响应**：`ok_response`
+
+### `POST /api/trading/batch_order`
+
+Body：`OrderRequest` **数组**。任一笔失败会中断后续（前面可能已成功）。
+
+**响应**：`{"data": [{"stock_code": "...", "order_id": ...}, ...]}`
+
+### `POST /api/trading/batch_cancel`
+
+Body：`CancelRequest` 数组。**响应**：`{"data": [{"order_id": ..., "result": ...}, ...]}`
+
+### 查询类（Query）
+
+公共可选 Query：`account_id`（默认 `""`）、多数还有 `account_type`（`STOCK`/`CREDIT`，默认 `""`）。
+
+| 方法 | 路径 | 额外 Query | 响应 |
+|------|------|------------|------|
+| GET | `/orders` | `cancelable_only` bool 默认 `false` | `{"data": [委托...]}` |
+| GET | `/trades` | | `{"data": [成交...]}` |
+| GET | `/positions` | | `{"data": [持仓...]}` |
+| GET | `/asset` | | `{"data": {资产...}}` |
+| GET | `/order_detail` | `order_id` int 默认 `0` | `{"data": ...}` |
+| GET | `/order/{order_id}` | Path `order_id` | `{"data": ...}` |
+| GET | `/trade/{trade_id}` | Path `trade_id` | `{"data": ...}` |
+| GET | `/position/{stock_code}` | Path 代码 | `{"data": ...}` |
+| GET | `/account_status` | `account_id` | `{"data": ...}` |
+| GET | `/account_status_detail` | 无 | `ok_response` |
+| GET | `/account_infos` | 无 | `{"data": ...}` |
+| GET | `/secu_account` | `account_id` | `ok_response` |
+| GET | `/new_purchase_limit` | `account_id` | `{"data": ...}` |
+| GET | `/ipo_data` | 无 | `{"data": ...}` |
+| GET | `/com_fund` | `account_id` | `{"data": ...}` 期权/期货资金 |
+| GET | `/com_position` | `account_id` | `{"data": ...}` |
+
+### `POST /api/trading/export_data` / `query_data`
+
+Body：
+
+| 字段 | 类型 | 必填 | 默认 |
+|------|------|------|------|
+| result_path | string | 是 | |
+| data_type | string | 是 | |
+| start_time / end_time | string | 否 | `""` |
+| user_param | string | 否 | `""` |
+| account_id | string | 否 | `""` |
+
+**响应**：`ok_response`
+
+### `POST /api/trading/sync_transaction`
+
+Body：`{"operation": "...", "data_type": "...", "deal_list": [{}], "account_id": ""}`  
+**响应**：`ok_response`
+
+---
+
+## Credit — `/api/credit/*` :material-lock:
+
+### `POST /api/credit/order`
+
+Body 同普通 `OrderRequest`（`CreditOrderRequest`）：`stock_code`、`order_type`、`order_volume` 必填；`price_type` 默认 5。`order_type` 区分融资买入/融券卖出等。
+
+**响应**：`{"order_id": ..., "status": "submitted"}`
+
+### 查询
+
+可选 Query：`account_id`；持仓/资产/负债另有 `account_type` 默认 `CREDIT`。
+
+| 方法 | 路径 | 别名 | 响应 |
+|------|------|------|------|
+| GET | `/positions` | | `{"data": ...}` |
+| GET | `/positions/breakdown` | | `{"data": ...}` 总=融资+担保品 |
+| GET | `/asset` | `/detail` | `{"data": ...}`；xtquant 返回 None 时 `503` |
+| GET | `/debt` | `/stk_compacts` | `{"data": ...}` |
+| GET | `/slo_stocks` | `/slo_code` | `{"data": ...}` 可融券 |
+| GET | `/subjects` | | `{"data": ...}` |
+| GET | `/assure` | | `{"data": ...}` |
+
+---
+
+## Fund — `/api/fund/*` :material-lock:
+
+响应均为 `ok_response`。
+
+### `POST /api/fund/transfer`
+
+Body：`{"transfer_direction": 0, "amount": 1000.0, "account_id": ""}`（`transfer_direction`、`amount` 必填）
+
+### `POST /api/fund/ctp_option_to_future` / `ctp_future_to_option`
+
+Body：`{"opt_account_id": "...", "ft_account_id": "...", "balance": 1000.0}` 均必填。
+
+### `POST /api/fund/secu_transfer`
+
+| 字段 | 类型 | 必填 |
+|------|------|------|
+| transfer_direction | int | 是 |
+| stock_code | string | 是 |
+| volume | int | 是 |
+| transfer_type | int | 是 |
+| account_id | string | 否 |
+
+---
+
+## SMT — `/api/smt/*` :material-lock:
+
+查询 GET，可选 Query `account_id`。响应 `ok_response`。
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/etf/list` | ETF 代码列表 |
-| GET | `/api/etf/info` | ETF 申赎清单 |
+| GET | `/quoter` | 报价方 |
+| GET | `/compact` | 合约 |
+| GET | `/orders` | 委托 |
 
-## CB — 可转债 `/api/cb/*`
+### `POST /api/smt/negotiate_order_async`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/cb/list` | 可转债列表 |
-| GET | `/api/cb/info` | 可转债信息 |
+| 字段 | 类型 | 必填 | 默认 |
+|------|------|------|------|
+| src_group_id | string | 是 | |
+| order_code | string | 是 | |
+| date | string | 是 | |
+| amount | float | 是 | |
+| apply_rate | float | 是 | |
+| dict_param | object | 否 | `{}` |
+| account_id | string | 否 | `""` |
 
-## Futures — 期货 `/api/futures/*`
+### `POST /api/smt/appointment_order_async`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/futures/main_contract` | 主力合约 |
-| GET | `/api/futures/sec_main_contract` | 次主力合约 |
+`order_code`、`date`、`amount`、`apply_rate` 必填；`account_id` 可选。
 
-## Formula — 公式/指标 `/api/formula/*`
+### `POST /api/smt/appointment_cancel_async`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/formula/call` | 调用公式（单只股票） |
-| POST | `/api/formula/call_batch` | 调用公式（多只股票） |
-| POST | `/api/formula/generate_index_data` | 生成自定义指数 |
-| POST | `/api/formula/create` | 创建公式 |
-| POST | `/api/formula/import` | 导入公式 |
-| DELETE | `/api/formula/delete` | 删除公式 |
-| GET | `/api/formula/list` | 公式列表 |
+`apply_id` 必填；`account_id` 可选。
 
-## HK — 港股通 `/api/hk/*`
+### `POST /api/smt/compact_renewal_async`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/hk/stock_list` | 港股通标的列表 |
-| GET | `/api/hk/connect_stocks` | 按方向筛选（沪港通 / 深港通） |
-| GET | `/api/hk/broker_dict` | 港股经纪商字典 |
+`cash_compact_id`、`order_code`、`defer_days`、`defer_num`、`apply_rate` 必填。
 
-## Tabular — 表格数据 `/api/tabular/*`
+### `POST /api/smt/compact_return_async`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/tabular/data` | 获取表格数据 |
-| GET | `/api/tabular/tables` | 列出可用数据表 |
-| GET | `/api/tabular/formula` | 获取表格公式 |
+`src_group_id`、`cash_compact_id`、`order_code`、`occur_amount` 必填。
 
-## Utility — 工具方法 `/api/utility/*`
+---
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/utility/stock_name` | 获取股票中文名 |
-| GET | `/api/utility/batch_stock_name` | 批量获取股票名 |
-| GET | `/api/utility/code_to_market` | 代码→市场归属 |
-| GET | `/api/utility/search` | 按关键词搜索股票 |
+## Bank — `/api/bank/*` :material-lock:
 
-## Meta — 系统元数据 `/api/meta/*`
+除查询流水为 GET 外，转账/余额为 POST（含密码）。响应 `ok_response`。
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/meta/health` | 健康检查 |
-| GET | `/api/meta/version` | 服务版本 |
-| GET | `/api/meta/xtdata_version` | xtquant 版本 |
-| GET | `/api/meta/connection_status` | xtdata 连接状态 |
-| GET | `/api/meta/markets` | 可用市场列表 |
-| GET | `/api/meta/period_list` | K 线周期列表 |
-| GET | `/api/meta/stock_list` | 按类别获取证券列表 |
-| GET | `/api/meta/last_trade_date` | 最近交易日 |
-| GET | `/api/meta/quote_server_status` | 行情服务器状态 |
+### `POST /api/bank/transfer_in` / `transfer_out` / `transfer_in_async` / `transfer_out_async`
 
-## Download — 数据下载 `/api/download/*`
+| 字段 | 类型 | 必填 | 默认 |
+|------|------|------|------|
+| bank_no | string | 是 | |
+| bank_account | string | 是 | |
+| balance | float | 是 | |
+| bank_pwd | string | 否 | `""` |
+| fund_pwd | string | 否 | `""` |
+| account_id | string | 否 | `""` |
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/download/history_data2` | 批量下载历史数据 |
-| POST | `/api/download/financial_data` | 下载财务数据 |
-| POST | `/api/download/financial_data2` | 同步下载财务数据（阻塞） |
-| POST | `/api/download/sector_data` | 下载板块数据 |
-| POST | `/api/download/index_weight` | 下载指数权重 |
-| POST | `/api/download/etf_info` | 下载 ETF 信息 |
-| POST | `/api/download/cb_data` | 下载可转债数据 |
-| POST | `/api/download/history_contracts` | 下载过期合约 |
-| POST | `/api/download/metatable_data` | 下载合约元数据表 |
-| POST | `/api/download/holiday_data` | 下载节假日数据 |
-| POST | `/api/download/his_st_data` | 下载历史 ST 数据 |
-| POST | `/api/download/tabular_data` | 下载表格数据 |
+### `GET /api/bank/info`
 
-## Trading — 交易 `/api/trading/*` :material-lock:
+Query：`account_id` 可选。
 
-!!! note "需要认证"
-    交易端点需要通过 `X-API-Key` 请求头进行认证，且服务端需启用交易模块 (`--trading`)。
+### `POST /api/bank/amount`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/trading/order` | 下单 |
-| POST | `/api/trading/cancel` | 撤单 |
-| POST | `/api/trading/batch_order` | 批量下单 |
-| POST | `/api/trading/batch_cancel` | 批量撤单 |
-| POST | `/api/trading/order_async` | 异步下单 |
-| POST | `/api/trading/cancel_async` | 异步撤单 |
-| POST | `/api/trading/cancel_by_sysid` | 按系统编号撤单 |
-| POST | `/api/trading/cancel_by_sysid_async` | 按系统编号异步撤单 |
-| GET | `/api/trading/orders` | 查询委托 |
-| GET | `/api/trading/trades` | 查询成交 |
-| GET | `/api/trading/positions` | 查询持仓 |
-| GET | `/api/trading/asset` | 查询资产 |
-| GET | `/api/trading/order_detail` | 查询单笔委托 |
-| GET | `/api/trading/order/{order_id}` | 查询指定委托 |
-| GET | `/api/trading/trade/{trade_id}` | 查询指定成交 |
-| GET | `/api/trading/position/{stock_code}` | 查询指定持仓 |
-| GET | `/api/trading/account_status` | 账户状态 |
-| GET | `/api/trading/account_status_detail` | 账户状态详情 |
-| GET | `/api/trading/account_infos` | 全部账户信息 |
-| GET | `/api/trading/secu_account` | 证券账户信息 |
-| GET | `/api/trading/new_purchase_limit` | 新股申购额度 |
-| GET | `/api/trading/ipo_data` | IPO 日历 |
-| GET | `/api/trading/com_fund` | COM 资金查询 |
-| GET | `/api/trading/com_position` | COM 持仓查询 |
-| POST | `/api/trading/export_data` | 导出交易数据 |
-| POST | `/api/trading/query_data` | 查询导出数据 |
-| POST | `/api/trading/sync_transaction` | 同步外部成交 |
+Body：`{"bank_no": "...", "bank_account": "...", "bank_pwd": "...", "account_id": ""}`（前三项必填）
 
-## Credit — 融资融券 `/api/credit/*` :material-lock:
+### `GET /api/bank/transfer_stream`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/credit/order` | 信用交易下单 |
-| GET | `/api/credit/asset` | 信用资产详情（`query_credit_detail`，别名 `/detail`） |
-| GET | `/api/credit/positions` | 信用持仓（`query_stock_positions` + CREDIT） |
-| GET | `/api/credit/positions/breakdown` | 信用持仓拆分（总=融资+担保品） |
-| GET | `/api/credit/debt` | 负债合约（`query_stk_compacts`，别名 `/stk_compacts`） |
-| GET | `/api/credit/slo_stocks` | 可融券标的（别名 `/slo_code`） |
-| GET | `/api/credit/subjects` | 标的证券 |
-| GET | `/api/credit/assure` | 担保品信息 |
-
-## Fund — 资金划转 `/api/fund/*` :material-lock:
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/fund/transfer` | 资金划转 |
-| POST | `/api/fund/ctp_option_to_future` | 期权→期货划转 |
-| POST | `/api/fund/ctp_future_to_option` | 期货→期权划转 |
-| POST | `/api/fund/secu_transfer` | 证券划转 |
-
-## SMT — 转融通 `/api/smt/*` :material-lock:
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/smt/quoter` | 报价方信息 |
-| GET | `/api/smt/compact` | 转融通合约 |
-| GET | `/api/smt/orders` | 转融通委托 |
-| POST | `/api/smt/negotiate_order_async` | 异步协商下单 |
-| POST | `/api/smt/appointment_order_async` | 异步预约下单 |
-| POST | `/api/smt/appointment_cancel_async` | 异步取消预约 |
-| POST | `/api/smt/compact_renewal_async` | 异步合约展期 |
-| POST | `/api/smt/compact_return_async` | 异步合约归还 |
-
-## Bank — 银证转账 `/api/bank/*` :material-lock:
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/bank/transfer_in` | 银行→证券 |
-| POST | `/api/bank/transfer_out` | 证券→银行 |
-| POST | `/api/bank/transfer_in_async` | 银行→证券（异步） |
-| POST | `/api/bank/transfer_out_async` | 证券→银行（异步） |
-| GET | `/api/bank/info` | 银行信息 |
-| POST | `/api/bank/amount` | 银行余额查询 |
-| GET | `/api/bank/transfer_stream` | 转账流水 |
+| 参数 | 位置 | 必填 | 默认 |
+|------|------|------|------|
+| start_date / end_date | Query | 是 | |
+| bank_no / bank_account / account_id | Query | 否 | `""` |
