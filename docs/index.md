@@ -1,14 +1,16 @@
 # QMT Bridge
 
-> 将 miniQMT（xtquant）封装为 HTTP/WebSocket API。Agent Skills 见独立仓库 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)。
+> 将 miniQMT（xtquant）封装为 HTTP/WebSocket API。
 
 ```
-调用方（Skill / easy-auto / 自研）          Windows（与 QMT 同机）
+调用方（HTTP / QMTClient）               Windows（与 QMT 同机）
 ┌──────────────────────┐                ┌─────────────────────────┐
 │  QMTClient / HTTP    │   HTTP/WS     │  miniQMT 客户端           │
 │                      │ ◄───────────► │  QMT Bridge (FastAPI)    │
 └──────────────────────┘                └─────────────────────────┘
 ```
+
+自然语言工作流见独立仓库 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)。
 
 ## 核心特性
 

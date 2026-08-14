@@ -1,4 +1,4 @@
-# 将 MkDocs 文档构建并发布到 GitHub Pages（push 到 main 时触发）
+# 发布 QMT Bridge API 文档（REST / WebSocket / QMTClient）
 name: Deploy GitHub Pages
 
 on:

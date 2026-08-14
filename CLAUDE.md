@@ -4,7 +4,7 @@
 
 ## 项目概览
 
-**QMT Bridge**：HTTP/WebSocket API + `QMTClient`，对接 miniQMT (xtquant)。Agent Skills 在独立仓库 `qmt-trading-skill`。
+**QMT Bridge**：HTTP/WebSocket API + `QMTClient`，对接 miniQMT (xtquant)。
 
 - **语言**: Python 3.10+
 - **构建**: hatchling (pyproject.toml)
@@ -38,9 +38,9 @@ python -m ruff format src/ tests/ && python -m ruff check src/ tests/
 python -m build                           # 构建 wheel
 ```
 
-## Agent Skills
+## 相关仓库
 
-自然语言工作流在独立仓库 **qmt-trading-skill**（可 git submodule 到 `vendor/qmt-bridge` 对照本仓实现）。本仓不包含 `skills/`。
+自然语言交易工作流在独立仓库 **qmt-trading-skill**。本仓不包含 `skills/`。
 
 ## 开发规范
 

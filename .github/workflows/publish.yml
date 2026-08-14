@@ -1,3 +1,4 @@
+# 将 qmt-bridge 包发布到 PyPI（tag v*）。Agent Skills 不走本流程。
 name: Publish to PyPI
 
 on:

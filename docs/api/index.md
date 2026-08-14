@@ -1,6 +1,6 @@
 # QMTClient 总览
 
-`QMTClient` 是 **QMT Bridge** 的 Python 客户端（QMT Trading Skill 的一部分），基于标准库实现，零外部依赖（WebSocket 功能需安装 `websockets`）。
+`QMTClient` 是 **QMT Bridge** 的 Python 客户端，基于标准库实现，零外部依赖（WebSocket 功能需安装 `websockets`）。
 
 ## 安装
 

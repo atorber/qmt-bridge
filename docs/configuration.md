@@ -1,6 +1,6 @@
 # 配置参考
 
-**QMT Bridge**（QMT Trading Skill 的 API 服务层）支持通过 `.env` 文件、环境变量或 CLI 参数进行配置。优先级：**CLI 参数 > 环境变量 > .env 文件 > 默认值**。
+**QMT Bridge** 支持通过 `.env` 文件、环境变量或 CLI 参数进行配置。优先级：**CLI 参数 > 环境变量 > .env 文件 > 默认值**。
 
 ## 配置项
 
@@ -18,19 +18,12 @@
 | `QMT_BRIDGE_CREDIT_ACCOUNT_ID` | `--credit-account-id` | _(空)_ | 信用两融账户 ID |
 | `QMT_BRIDGE_DEFAULT_ACCOUNT` | `--default-account` | `stock` | 默认 API/订阅账户：`stock` \| `credit` |
 
-### Agent 脚本
-
-`skills/*/scripts/` 会读取上述变量（及 `QMT_BRIDGE_HOST` / `QMT_BRIDGE_PORT`）。注意：
-
-- **服务端**监听：`QMT_BRIDGE_HOST=0.0.0.0` 表示接受局域网连接。
-- **本机跑脚本**：请连接 `127.0.0.1` 或实际 IP，例如  
-  `python skills/qmt-bridge-daily-pnl/scripts/daily_pnl_snapshot.py --host 127.0.0.1 --port 8080 --api-key YOUR_KEY`  
-  勿将 `0.0.0.0` 作为 HTTP 客户端目标。
+HTTP 客户端请连接 `127.0.0.1` 或本机局域网 IP，不要把服务端监听地址 `0.0.0.0` 当作请求目标。
 
 ## .env 文件示例
 
 ```bash
-# QMT Bridge 配置（QMT Trading Skill）
+# QMT Bridge 配置
 # 复制此文件为 .env 并按需修改:  cp .env.example .env
 
 # 监听地址 (0.0.0.0 表示允许局域网访问)

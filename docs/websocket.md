@@ -1,6 +1,6 @@
 # WebSocket 使用指南
 
-**QMT Bridge**（QMT Trading Skill 的 API 层）提供 5 个 WebSocket 端点，用于实时数据推送。
+**QMT Bridge** 提供多个 WebSocket 端点，用于实时数据推送。
 
 ## 端点列表
 

@@ -1,3 +1,4 @@
+# QMT Bridge API 契约测试（不含 Agent Skills）
 name: CI
 
 on:
