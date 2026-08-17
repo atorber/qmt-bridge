@@ -3,10 +3,10 @@
 对齐 xttrader 真实交易 API，修复参数传递链路。
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..deps import get_trader_manager
-from ..helpers import _numpy_to_python, ok_response
+from ..helpers import _history_rows_to_list, _numpy_to_python, ok_response
 from ..models import (
     AsyncCancelRequest,
     AsyncOrderRequest,
@@ -119,6 +119,81 @@ def query_trades(
     """查询当日成交记录 → manager.query_trades()"""
     result = manager.query_trades(account_id=account_id, account_type=account_type)
     return {"data": _numpy_to_python(result)}
+
+
+def _normalize_history_date(value: str, field: str) -> str:
+    raw = (value or "").strip().replace("-", "").replace("/", "")
+    if not raw:
+        return ""
+    if len(raw) != 8 or not raw.isdigit():
+        raise HTTPException(status_code=422, detail=f"{field} 须为 YYYYMMDD")
+    return raw
+
+
+def _xt_error_message(payload) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    err = payload.get("error")
+    if isinstance(err, dict):
+        return str(err.get("errorMsg") or err.get("message") or err)
+    if isinstance(err, str) and err.strip():
+        return err
+    return None
+
+
+def _history_response(start: str, end: str, result: dict) -> dict:
+    export_code = result.get("export_code")
+    rows = _history_rows_to_list(result.get("rows"))
+    error = _xt_error_message(export_code)
+    if error is None and len(rows) == 1:
+        error = _xt_error_message(rows[0])
+        if error:
+            rows = []
+    elif error:
+        rows = []
+    body = {
+        "start_time": start,
+        "end_time": end,
+        "export_code": export_code,
+        "data": rows,
+    }
+    if error:
+        body["error"] = error
+    return body
+
+
+@router.get("/history_trades")
+def query_history_trades(
+    start_time: str = Query(..., description="开始日期 YYYYMMDD"),
+    end_time: str = Query("", description="结束日期 YYYYMMDD，空则到今天"),
+    account_id: str = Query("", description="交易账户 ID"),
+    account_type: str = Query("", description="账户类型：STOCK 或 CREDIT"),
+    manager=Depends(get_trader_manager),
+):
+    """查询区间历史成交 → export_data + query_data（data_type=deal）。"""
+    start = _normalize_history_date(start_time, "start_time")
+    end = _normalize_history_date(end_time, "end_time")
+    result = manager.query_exported_history(
+        "deal", start, end, account_id=account_id, account_type=account_type
+    )
+    return _history_response(start, end, result)
+
+
+@router.get("/history_orders")
+def query_history_orders(
+    start_time: str = Query(..., description="开始日期 YYYYMMDD"),
+    end_time: str = Query("", description="结束日期 YYYYMMDD，空则到今天"),
+    account_id: str = Query("", description="交易账户 ID"),
+    account_type: str = Query("", description="账户类型：STOCK 或 CREDIT"),
+    manager=Depends(get_trader_manager),
+):
+    """查询区间历史委托 → export_data + query_data（data_type=order）。券商可能无数据。"""
+    start = _normalize_history_date(start_time, "start_time")
+    end = _normalize_history_date(end_time, "end_time")
+    result = manager.query_exported_history(
+        "order", start, end, account_id=account_id, account_type=account_type
+    )
+    return _history_response(start, end, result)
 
 
 @router.get("/order_detail")

@@ -12,6 +12,8 @@
 """
 
 import logging
+import os
+import tempfile
 
 logger = logging.getLogger("qmt_bridge.trading")
 
@@ -550,6 +552,37 @@ class XtTraderManager:
         return self._trader.query_data(
             account, result_path, data_type, start_time, end_time, user_param,
         )
+
+    def query_exported_history(
+        self,
+        data_type: str,
+        start_time: str = "",
+        end_time: str = "",
+        account_id: str = "",
+        account_type: str = "",
+    ):
+        """导出再查询区间成交/委托（``deal`` / ``order``）。
+
+        xtquant 的 ``query_stock_orders`` / ``query_stock_trades`` 只有当日。
+        跨日记录走 ``export_data`` + ``query_data``，临时文件写在本机后删除。
+        """
+        account = self._resolve_account(account_id, account_type)
+        fd, path = tempfile.mkstemp(prefix=f"qmt_{data_type}_", suffix=".csv")
+        os.close(fd)
+        param: dict = {}
+        try:
+            export_code = self._trader.export_data(
+                account, path, data_type, start_time, end_time, param
+            )
+            raw = self._trader.query_data(
+                account, path, data_type, start_time, end_time, param
+            )
+            return {"export_code": export_code, "rows": raw}
+        finally:
+            try:
+                os.remove(path)
+            except OSError:
+                logger.debug("failed to remove history export %s", path, exc_info=True)
 
     def sync_transaction_from_external(self, operation: str, data_type: str,
                                        deal_list: list, account_id: str = ""):

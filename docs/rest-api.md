@@ -748,6 +748,8 @@ Body：`CancelRequest` 数组。**响应**：`{"data": [{"order_id": ..., "resul
 |------|------|------------|------|
 | GET | `/orders` | `cancelable_only` bool 默认 `false` | `{"data": [委托...]}` |
 | GET | `/trades` | | `{"data": [成交...]}` |
+| GET | `/history_trades` | `start_time` 必填、`end_time` 可选，`YYYYMMDD` | `{"data": [历史成交...]}`；底层 `export_data`+`query_data`（`deal`） |
+| GET | `/history_orders` | 同上 | `{"data": [历史委托...]}`；`data_type=order`，部分券商无数据 |
 | GET | `/positions` | | `{"data": [持仓...]}` |
 | GET | `/asset` | | `{"data": {资产...}}` |
 | GET | `/order_detail` | `order_id` int 默认 `0` | `{"data": ...}` |

@@ -166,6 +166,42 @@ class TradingMixin:
             {"account_id": account_id, **({"account_type": account_type} if account_type else {})},
         )
 
+    def query_history_trades(
+        self,
+        start_time: str,
+        end_time: str = "",
+        account_id: str = "",
+        account_type: str = "",
+    ) -> dict:
+        """查询区间历史成交（export_data + query_data，data_type=deal）。
+
+        Args:
+            start_time: 开始日期 ``YYYYMMDD``
+            end_time: 结束日期，空则到今天
+            account_id: 交易账户 ID
+            account_type: ``STOCK`` 或 ``CREDIT``
+
+        Returns:
+            ``{"start_time", "end_time", "export_code", "data": [...]}``
+        """
+        params = {"start_time": start_time, "end_time": end_time, "account_id": account_id}
+        if account_type:
+            params["account_type"] = account_type
+        return self._get("/api/trading/history_trades", params)
+
+    def query_history_orders(
+        self,
+        start_time: str,
+        end_time: str = "",
+        account_id: str = "",
+        account_type: str = "",
+    ) -> dict:
+        """查询区间历史委托（export_data + query_data，data_type=order）。"""
+        params = {"start_time": start_time, "end_time": end_time, "account_id": account_id}
+        if account_type:
+            params["account_type"] = account_type
+        return self._get("/api/trading/history_orders", params)
+
     def query_order_detail(self, order_id: int, account_id: str = "") -> dict:
         """查询指定委托的详细信息。
 

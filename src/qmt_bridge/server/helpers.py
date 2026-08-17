@@ -87,6 +87,30 @@ def _numpy_to_python(obj):
     return obj
 
 
+def _history_rows_to_list(raw):
+    """把 export/query_data 的 list / (cols, rows) / DataFrame 收成 dict 列表。"""
+    converted = _numpy_to_python(raw)
+    if converted is None:
+        return []
+    if isinstance(converted, list):
+        if (
+            len(converted) == 2
+            and isinstance(converted[0], list)
+            and converted[1]
+            and isinstance(converted[1], list)
+            and isinstance(converted[1][0], list)
+            and len(converted[0]) == len(converted[1][0])
+        ):
+            cols, rows = converted[0], converted[1]
+            return [dict(zip(cols, row)) for row in rows]
+        return [
+            item if isinstance(item, dict) else {"value": item} for item in converted
+        ]
+    if isinstance(converted, dict):
+        return [converted]
+    return [{"value": converted}]
+
+
 def ok_response(data, **extra):
     """统一成功响应格式。"""
     return {"code": 0, "message": "ok", "data": data, **extra}
