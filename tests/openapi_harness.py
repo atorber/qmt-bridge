@@ -32,6 +32,10 @@ _PATH_PARAM_DEFAULTS: dict[str, str] = {
     "code_market": "IF.CFE",
     "account_id": "12345678",
     "sysid": "test-sysid",
+    "start_time": "20250101",
+    "end_time": "20250102",
+    "date": "20250101",
+    "dedate": "20250321",
 }
 
 

@@ -226,6 +226,12 @@ OPERATION_SAMPLES: dict[str, dict] = {
             "deal_list": [],
         },
     },
+    "GET /api/trading/history_trades": {
+        "query": {"start_time": "20250101"},
+    },
+    "GET /api/trading/history_orders": {
+        "query": {"start_time": "20250101"},
+    },
 }
 
 # 子进程内 xtdata 无法继承 mock，单独跳过

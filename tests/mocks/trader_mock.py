@@ -241,5 +241,15 @@ class TraderManagerStub:
     def query_data(self, *args, **kwargs):
         return []
 
+    def query_exported_history(
+        self,
+        data_type: str,
+        start_time: str = "",
+        end_time: str = "",
+        account_id: str = "",
+        account_type: str = "",
+    ):
+        return {"export_code": 0, "rows": []}
+
     def sync_transaction_from_external(self, *args, **kwargs) -> int:
         return 0
