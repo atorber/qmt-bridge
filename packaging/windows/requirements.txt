@@ -1,5 +1,9 @@
 fastapi>=0.100
-uvicorn[standard]>=0.20
+# 不用 uvicorn[standard]：httptools 等在 win_arm64 常无 wheel，会强制源码编译失败
+uvicorn>=0.20
+python-dotenv>=0.13
+PyYAML>=5.1
+colorama>=0.4
 pandas>=1.5
 numpy>=1.23
 websockets>=11.0

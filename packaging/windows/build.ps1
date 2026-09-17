@@ -193,22 +193,40 @@ if (-not (Test-Path $embedPython)) {
     throw "嵌入式 Python 缺少 python.exe"
 }
 
+# 禁止写入/读取用户 site-packages，避免本机已装包导致便携运行时缺依赖
+$env:PYTHONNOUSERSITE = "1"
+$env:PYTHONPATH = ""
+$env:PIP_USER = "0"
+
 Write-Host "安装 pip"
-& $embedPython (Join-Path $Runtime "get-pip.py") --no-warn-script-location --disable-pip-version-check
+& $embedPython (Join-Path $Runtime "get-pip.py") --no-warn-script-location --disable-pip-version-check --no-user
 if ($LASTEXITCODE -ne 0) {
     throw "get-pip 失败"
 }
 
+Write-Host "安装 setuptools / wheel（嵌入式环境默认无构建后端）"
+& $embedPython -m pip install --no-warn-script-location --disable-pip-version-check --no-user setuptools wheel
+if ($LASTEXITCODE -ne 0) {
+    throw "安装 setuptools/wheel 失败"
+}
+
 $req = Join-Path $PackagingDir "requirements.txt"
 Write-Host "安装桌面运行时依赖"
-& $embedPython -m pip install --no-warn-script-location --disable-pip-version-check -r $req
+& $embedPython -m pip install --no-warn-script-location --disable-pip-version-check --no-user --prefer-binary -r $req
 if ($LASTEXITCODE -ne 0) {
     throw "安装 Python 依赖失败"
 }
 
+# 可选加速依赖：无对应平台 wheel 时跳过，不影响服务启动
+Write-Host "尝试安装可选依赖 httptools / watchfiles"
+& $embedPython -m pip install --no-warn-script-location --disable-pip-version-check --no-user --prefer-binary httptools watchfiles
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "httptools/watchfiles 未能安装（常见于 win_arm64），已跳过。"
+}
+
 if (-not $SkipXtquant) {
     Write-Host "尝试安装 xtquant（失败则跳过，运行时会探测 QMT 自带路径）"
-    & $embedPython -m pip install --no-warn-script-location --disable-pip-version-check xtquant
+    & $embedPython -m pip install --no-warn-script-location --disable-pip-version-check --no-user --prefer-binary xtquant
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "xtquant 未能通过 pip 安装，客户机仍可通过本机 QMT 探测使用。"
     }
