@@ -76,16 +76,16 @@
       background: var(--bg-input); border: 1px solid var(--line);
       border-radius: 12px; padding: 10px 12px;
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      margin-top: 12px;
+      margin-top: 4px;
     }
     .hero .url span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ghost {
       border: 0; background: transparent; color: var(--accent);
       cursor: pointer; font: inherit; padding: 0;
     }
-    .row { display: flex; gap: 8px; margin-top: 14px; }
+    .row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
     .btn {
-      flex: 1; height: 40px; border: 0; border-radius: 12px;
+      flex: 1 1 calc(50% - 4px); min-width: 0; height: 40px; border: 0; border-radius: 12px;
       font: inherit; font-weight: 600; cursor: pointer;
     }
     .btn:disabled { opacity: .55; cursor: default; }
@@ -95,6 +95,20 @@
       background: var(--accent-dim); color: #cfe0ff;
       border: 1px solid rgba(79,140,255,.25);
     }
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    #editPanel { display: none; }
+    body.editing #editPanel { display: block; }
+    body.editing #compactMeta { display: none; }
+    .setup-banner {
+      display: none;
+      margin-bottom: 12px; padding: 10px 12px;
+      border-radius: 12px; border: 1px solid rgba(245,193,108,.28);
+      background: rgba(245,193,108,.08); color: var(--warn); font-size: 12px;
+    }
+    body.needs-setup .setup-banner { display: block; }
     h2 {
       margin: 0 0 12px; font-size: 12px; font-weight: 650;
       color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
@@ -134,6 +148,10 @@
       color: var(--muted); font-size: 12px;
     }
     .meta b { display: block; color: var(--text); font-weight: 600; margin-top: 2px; }
+    .compact-meta {
+      color: var(--muted); font-size: 12px; margin-top: 12px;
+      display: flex; justify-content: space-between; gap: 8px;
+    }
     .foot {
       display: flex; justify-content: space-between; align-items: center;
       color: var(--muted); font-size: 12px; margin-top: 8px; padding: 0 4px;
@@ -161,81 +179,95 @@
       <div id="status" class="pill"><i class="dot"></i>未启动</div>
     </header>
 
+    <div class="setup-banner" id="setupBanner">首次使用：请确认端口与交易相关配置后保存</div>
+
     <section class="card hero">
       <div class="url">
         <span id="localUrl">http://127.0.0.1:8000</span>
         <button class="ghost" type="button" id="copyBtn">复制</button>
       </div>
       <div class="row">
-        <button class="btn btn-primary" id="toggleBtn" type="button">启动服务</button>
-        <button class="btn btn-secondary" id="docsBtn" type="button">打开文档</button>
+        <button class="btn btn-primary" id="toggleBtn" type="button">启动</button>
+        <button class="btn btn-secondary" id="restartBtn" type="button">重启</button>
+        <button class="btn btn-ghost" id="settingsBtn" type="button">设置</button>
+        <button class="btn btn-ghost" id="docsBtn" type="button">打开文档</button>
+      </div>
+      <div class="compact-meta" id="compactMeta">
+        <span>miniQMT <b id="qmtMetaCompact">—</b></span>
+        <span>xtquant <b id="xtMetaCompact">—</b></span>
       </div>
       <div class="err" id="error"></div>
     </section>
 
-    <section class="card">
-      <h2>连接</h2>
-      <div class="field">
-        <label for="port">端口</label>
-        <input id="port" type="number" min="1" max="65535" />
-      </div>
-      <div class="field">
-        <label for="apiKey">API Key（保护交易接口）</label>
-        <input id="apiKey" type="password" autocomplete="off" placeholder="可选" />
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>交易</h2>
-      <div class="switch-row">
-        <div>
-          <span>启用交易</span>
-          <div class="hint">需要 miniQMT 已登录「独立交易」</div>
+    <div id="editPanel">
+      <section class="card">
+        <h2>连接</h2>
+        <div class="field">
+          <label for="port">端口</label>
+          <input id="port" type="number" min="1" max="65535" />
         </div>
-        <label class="toggle"><input id="trading" type="checkbox" /><i class="slider"></i></label>
-      </div>
-      <div class="field">
-        <label for="qmtPath">miniQMT 路径（userdata_mini）</label>
-        <div class="path-row">
-          <input id="qmtPath" type="text" placeholder="自动探测或手动选择" />
-          <button class="btn btn-secondary" id="browseBtn" type="button">浏览</button>
+        <div class="field">
+          <label for="apiKey">API Key（保护交易接口）</label>
+          <input id="apiKey" type="password" autocomplete="off" placeholder="可选" />
         </div>
-      </div>
-      <div class="field">
-        <label for="stockId">普通账户</label>
-        <input id="stockId" type="text" placeholder="可选" />
-      </div>
-      <div class="field">
-        <label for="creditId">信用账户</label>
-        <input id="creditId" type="text" placeholder="可选" />
-      </div>
-      <div class="field">
-        <label for="defaultAccount">默认账户</label>
-        <select id="defaultAccount">
-          <option value="stock">普通账户</option>
-          <option value="credit">信用账户</option>
-        </select>
-      </div>
-    </section>
+      </section>
 
-    <section class="card">
-      <h2>选项</h2>
-      <div class="switch-row">
-        <span>开机启动</span>
-        <label class="toggle"><input id="autostart" type="checkbox" /><i class="slider"></i></label>
-      </div>
-      <div class="switch-row">
-        <span>打开后自动启动服务</span>
-        <label class="toggle"><input id="startOnLaunch" type="checkbox" /><i class="slider"></i></label>
-      </div>
-    </section>
+      <section class="card">
+        <h2>交易</h2>
+        <div class="switch-row">
+          <div>
+            <span>启用交易</span>
+            <div class="hint">需要 miniQMT 已登录「独立交易」</div>
+          </div>
+          <label class="toggle"><input id="trading" type="checkbox" /><i class="slider"></i></label>
+        </div>
+        <div class="field">
+          <label for="qmtPath">miniQMT 路径（userdata_mini）</label>
+          <div class="path-row">
+            <input id="qmtPath" type="text" placeholder="自动探测或手动选择" />
+            <button class="btn btn-secondary" id="browseBtn" type="button">浏览</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="stockId">普通账户</label>
+          <input id="stockId" type="text" placeholder="可选" />
+        </div>
+        <div class="field">
+          <label for="creditId">信用账户</label>
+          <input id="creditId" type="text" placeholder="可选" />
+        </div>
+        <div class="field">
+          <label for="defaultAccount">默认账户</label>
+          <select id="defaultAccount">
+            <option value="stock">普通账户</option>
+            <option value="credit">信用账户</option>
+          </select>
+        </div>
+      </section>
 
-    <section class="card">
-      <div class="meta">
-        <div>miniQMT<b id="qmtMeta">检测中…</b></div>
-        <div>xtquant<b id="xtMeta">检测中…</b></div>
+      <section class="card">
+        <h2>选项</h2>
+        <div class="switch-row">
+          <span>开机启动</span>
+          <label class="toggle"><input id="autostart" type="checkbox" /><i class="slider"></i></label>
+        </div>
+        <div class="switch-row">
+          <span>打开后自动启动服务</span>
+          <label class="toggle"><input id="startOnLaunch" type="checkbox" /><i class="slider"></i></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="meta">
+          <div>miniQMT<b id="qmtMeta">检测中…</b></div>
+          <div>xtquant<b id="xtMeta">检测中…</b></div>
+        </div>
+      </section>
+
+      <div class="row" style="margin-top:0;margin-bottom:12px">
+        <button class="btn btn-primary" id="doneBtn" type="button">完成</button>
       </div>
-    </section>
+    </div>
 
     <div class="foot">
       <span id="version">v</span>
@@ -247,6 +279,8 @@
     const $ = (id) => document.getElementById(id);
     let busy = false;
     let lastRunning = false;
+    let editing = false;
+    let manualEdit = false;
 
     function toast(msg) {
       const el = $("toast");
@@ -255,8 +289,8 @@
       setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    function formConfig() {
-      return {
+    function formConfig(extra) {
+      return Object.assign({
         port: Number($("port").value || 8000),
         api_key: $("apiKey").value,
         trading_enabled: $("trading").checked,
@@ -266,7 +300,7 @@
         default_account: $("defaultAccount").value,
         autostart: $("autostart").checked,
         start_on_launch: $("startOnLaunch").checked,
-      };
+      }, extra || {});
     }
 
     function applyConfig(cfg) {
@@ -279,6 +313,14 @@
       $("defaultAccount").value = cfg.default_account || "stock";
       $("autostart").checked = !!cfg.autostart;
       $("startOnLaunch").checked = !!cfg.start_on_launch;
+    }
+
+    function setEditing(on, { manual = false } = {}) {
+      editing = !!on;
+      if (manual) manualEdit = !!on;
+      if (!on) manualEdit = false;
+      document.body.classList.toggle("editing", editing);
+      $("settingsBtn").textContent = editing ? "收起" : "设置";
     }
 
     function setStatus(state) {
@@ -294,8 +336,9 @@
         el.innerHTML = '<i class="dot"></i>未启动';
       }
       const btn = $("toggleBtn");
-      btn.textContent = state.running ? "停止服务" : "启动服务";
+      btn.textContent = state.running ? "停止" : "启动";
       btn.classList.toggle("stop", !!state.running);
+      $("restartBtn").disabled = !state.running && !state.healthy;
       lastRunning = !!state.running;
     }
 
@@ -304,13 +347,30 @@
       const s = await res.json();
       $("localUrl").textContent = s.local_url;
       $("version").textContent = "v" + s.version;
-      $("qmtMeta").textContent = s.qmt.running
+      const qmtText = s.qmt.running
         ? "已登录"
         : (s.qmt.found ? "已安装，未登录" : "未找到");
-      $("xtMeta").textContent = s.xtquant.ok
+      const xtText = s.xtquant.ok
         ? (s.xtquant.version || "可用")
         : "未就绪";
+      $("qmtMeta").textContent = qmtText;
+      $("xtMeta").textContent = xtText;
+      $("qmtMetaCompact").textContent = qmtText;
+      $("xtMetaCompact").textContent = xtText;
       setStatus(s);
+
+      const needs = !!s.needs_setup;
+      document.body.classList.toggle("needs-setup", needs);
+      if (s.missing_required && s.missing_required.length) {
+        $("setupBanner").textContent =
+          "请补全必填配置：" + s.missing_required.join("、");
+      } else {
+        $("setupBanner").textContent = "首次使用：请确认端口与交易相关配置后点击「完成」";
+      }
+      // 仅首次缺配置时自动进入编辑态；手动打开设置后保持
+      if (needs && !manualEdit) setEditing(true);
+      else if (!needs && !manualEdit && editing) setEditing(false);
+
       const tag = document.activeElement && document.activeElement.tagName;
       if (tag !== "INPUT" && tag !== "SELECT" && tag !== "TEXTAREA") {
         applyConfig(s.config);
@@ -318,11 +378,11 @@
       return s;
     }
 
-    async function saveSilent() {
+    async function saveSilent(extra) {
       await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formConfig()),
+        body: JSON.stringify(formConfig(extra)),
       });
     }
 
@@ -337,25 +397,58 @@
       return data;
     }
 
-    $("toggleBtn").onclick = async () => {
+    async function withBusy(fn) {
       if (busy) return;
       busy = true;
       $("error").textContent = "";
       $("toggleBtn").disabled = true;
+      $("restartBtn").disabled = true;
       try {
-        if (lastRunning) {
-          const r = await post("/api/stop");
-          if (!r.ok) $("error").textContent = r.error || "停止失败";
-        } else {
-          const r = await post("/api/start", formConfig());
-          if (!r.ok) $("error").textContent = r.error || r.log || "启动失败";
-          else if (r.warning) $("error").textContent = r.warning;
-        }
+        await fn();
         await refresh();
       } finally {
         busy = false;
         $("toggleBtn").disabled = false;
       }
+    }
+
+    $("toggleBtn").onclick = () => withBusy(async () => {
+      if (lastRunning) {
+        const r = await post("/api/stop");
+        if (!r.ok) $("error").textContent = r.error || "停止失败";
+      } else {
+        const r = await post("/api/start", formConfig({ setup_complete: true }));
+        if (!r.ok) $("error").textContent = r.error || r.log || "启动失败";
+        else if (r.warning) $("error").textContent = r.warning;
+        else if (!manualEdit) setEditing(false);
+      }
+    });
+
+    $("restartBtn").onclick = () => withBusy(async () => {
+      const r = await post("/api/restart", formConfig({ setup_complete: true }));
+      if (!r.ok) $("error").textContent = r.error || r.log || "重启失败";
+      else if (r.warning) $("error").textContent = r.warning;
+    });
+
+    $("settingsBtn").onclick = () => {
+      if (editing && manualEdit) setEditing(false);
+      else setEditing(true, { manual: true });
+    };
+
+    $("doneBtn").onclick = async () => {
+      $("error").textContent = "";
+      await saveSilent({ setup_complete: true });
+      const s = await refresh();
+      if (s.needs_setup) {
+        $("error").textContent =
+          "仍有必填项未完成" +
+          (s.missing_required && s.missing_required.length
+            ? "：" + s.missing_required.join("、")
+            : "");
+        return;
+      }
+      setEditing(false);
+      toast("配置已保存");
     };
 
     $("docsBtn").onclick = () => post("/api/open-docs");
@@ -377,10 +470,10 @@
     };
 
     ["port","apiKey","qmtPath","stockId","creditId","defaultAccount"].forEach((id) => {
-      $(id).addEventListener("change", saveSilent);
+      $(id).addEventListener("change", () => saveSilent());
     });
     ["trading","autostart","startOnLaunch"].forEach((id) => {
-      $(id).addEventListener("change", saveSilent);
+      $(id).addEventListener("change", () => saveSilent());
     });
 
     refresh().catch((err) => { $("error").textContent = String(err); });

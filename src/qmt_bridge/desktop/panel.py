@@ -29,6 +29,7 @@ def snapshot() -> dict:
     qmt = runtime.detect_qmt()
     xt = runtime.xtquant_status()
     ip = runtime.lan_ip()
+    missing = runtime.missing_required_config(cfg)
     return {
         "version": __version__,
         "running": running,
@@ -40,6 +41,8 @@ def snapshot() -> dict:
         "qmt": qmt,
         "xtquant": xt,
         "config": cfg,
+        "needs_setup": runtime.needs_setup(cfg),
+        "missing_required": missing,
         "log_tail": runtime.read_log_tail(2500),
     }
 
@@ -115,6 +118,14 @@ class PanelHandler(BaseHTTPRequestHandler):
                 cfg = runtime.load_config()
                 result = runtime.stop_server(int(cfg["port"]))
                 self._json(result)
+                return
+            if path == "/api/restart":
+                payload = self._read_json()
+                cfg = runtime.load_config()
+                runtime.stop_server(int(cfg["port"]))
+                result = runtime.start_server(payload or None)
+                status = 200 if result.get("ok") else 500
+                self._json(result, status)
                 return
             if path == "/api/browse":
                 selected = runtime.pick_folder()

@@ -128,24 +128,36 @@ def _as_bool(val: str | bool | None, default: bool = False) -> bool:
 
 def load_desktop_prefs() -> dict:
     path = desktop_prefs_path()
+    # 已有 .env 的旧安装视为已完成首次配置
+    legacy_done = env_path().is_file()
+    defaults = {
+        "autostart": False,
+        "start_on_launch": False,
+        "setup_complete": legacy_done,
+    }
     if not path.is_file():
-        return {"autostart": False, "start_on_launch": False}
+        return defaults
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {"autostart": False, "start_on_launch": False}
+        return defaults
     return {
         "autostart": bool(data.get("autostart", False)),
         "start_on_launch": bool(data.get("start_on_launch", False)),
+        "setup_complete": bool(data.get("setup_complete", legacy_done)),
     }
 
 
 def save_desktop_prefs(prefs: dict) -> None:
+    current = load_desktop_prefs()
     desktop_prefs_path().write_text(
         json.dumps(
             {
                 "autostart": bool(prefs.get("autostart", False)),
                 "start_on_launch": bool(prefs.get("start_on_launch", False)),
+                "setup_complete": bool(
+                    prefs.get("setup_complete", current.get("setup_complete", False))
+                ),
             },
             ensure_ascii=False,
             indent=2,
@@ -153,6 +165,35 @@ def save_desktop_prefs(prefs: dict) -> None:
         + "\n",
         encoding="utf-8",
     )
+
+
+def missing_required_config(cfg: dict | None = None) -> list[str]:
+    """返回缺失的必填配置项（用于首次编辑态）。"""
+    cfg = cfg or load_config()
+    missing: list[str] = []
+    try:
+        port = int(cfg.get("port") or 0)
+    except (TypeError, ValueError):
+        port = 0
+    if port < 1 or port > 65535:
+        missing.append("端口")
+    if cfg.get("trading_enabled"):
+        if not str(cfg.get("mini_qmt_path") or "").strip():
+            missing.append("miniQMT 路径")
+        has_stock = bool(str(cfg.get("stock_account_id") or "").strip())
+        has_credit = bool(str(cfg.get("credit_account_id") or "").strip())
+        if not has_stock and not has_credit:
+            missing.append("交易账户")
+    return missing
+
+
+def needs_setup(cfg: dict | None = None) -> bool:
+    """首次尚未完成配置，或仍缺少必填项时进入编辑态。"""
+    cfg = cfg or load_config()
+    prefs = load_desktop_prefs()
+    if not prefs.get("setup_complete"):
+        return True
+    return bool(missing_required_config(cfg))
 
 
 def load_config() -> dict:
@@ -183,6 +224,7 @@ def load_config() -> dict:
     prefs = load_desktop_prefs()
     cfg["autostart"] = prefs["autostart"]
     cfg["start_on_launch"] = prefs["start_on_launch"]
+    cfg["setup_complete"] = prefs["setup_complete"]
     if not cfg["mini_qmt_path"]:
         detected = detect_qmt()
         if detected.get("userdata_mini"):
@@ -207,6 +249,11 @@ def save_config(cfg: dict) -> dict:
     merged["require_auth_for_data"] = _as_bool(merged.get("require_auth_for_data"))
     merged["autostart"] = _as_bool(merged.get("autostart"))
     merged["start_on_launch"] = _as_bool(merged.get("start_on_launch"))
+    # 仅在面板显式传入时更新；静默保存字段不误标「首次配置完成」
+    if "setup_complete" in cfg:
+        merged["setup_complete"] = _as_bool(cfg.get("setup_complete"))
+    else:
+        merged["setup_complete"] = bool(load_desktop_prefs().get("setup_complete", False))
 
     lines = [
         "# QMT Bridge 桌面配置（由控制面板写入，请勿与仓库 .env 混淆）",
@@ -224,7 +271,13 @@ def save_config(cfg: dict) -> dict:
         "",
     ]
     env_path().write_text("\n".join(lines), encoding="utf-8")
-    save_desktop_prefs(merged)
+    save_desktop_prefs(
+        {
+            "autostart": merged["autostart"],
+            "start_on_launch": merged["start_on_launch"],
+            "setup_complete": merged.get("setup_complete", True),
+        }
+    )
     set_autostart(merged["autostart"])
     return load_config()
 
@@ -674,7 +727,7 @@ def open_app_window(url: str) -> None:
                 [
                     str(browser),
                     f"--app={url}",
-                    "--window-size=440,780",
+                    "--window-size=440,640",
                     f"--user-data-dir={profile}",
                 ],
                 creationflags=CREATE_NO_WINDOW,
