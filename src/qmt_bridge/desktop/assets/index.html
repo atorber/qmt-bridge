@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QMT Bridge</title>
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --bg-elev: #14181f;
+      --bg-input: #0f131a;
+      --line: rgba(255,255,255,.08);
+      --text: #eef2f7;
+      --muted: #8b95a7;
+      --accent: #4f8cff;
+      --accent-dim: rgba(79,140,255,.16);
+      --ok: #3dd68c;
+      --warn: #f5c16c;
+      --bad: #ff7a7a;
+      --radius: 16px;
+      --shadow: 0 24px 60px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font: 14px/1.45 "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 420px at 80% -10%, rgba(79,140,255,.18), transparent 55%),
+        radial-gradient(900px 360px at -10% 110%, rgba(61,214,140,.08), transparent 50%),
+        var(--bg);
+    }
+    .wrap {
+      width: min(420px, 100%);
+      margin: 0 auto;
+      padding: 22px 18px 28px;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 36px; height: 36px; border-radius: 11px;
+      background: linear-gradient(160deg, #6aa2ff, #3b6fe0);
+      display: grid; place-items: center;
+      font-weight: 700; letter-spacing: .02em; box-shadow: var(--shadow);
+    }
+    .brand h1 { font-size: 16px; margin: 0; font-weight: 650; }
+    .brand p { margin: 1px 0 0; color: var(--muted); font-size: 12px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 999px;
+      background: var(--bg-elev); border: 1px solid var(--line);
+      color: var(--muted); font-size: 12px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #5c6574; }
+    .pill.ok { color: var(--ok); }
+    .pill.ok .dot { background: var(--ok); box-shadow: 0 0 0 4px rgba(61,214,140,.15); }
+    .pill.warn { color: var(--warn); }
+    .pill.bad { color: var(--bad); }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), transparent 40%), var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .hero { padding: 18px 16px 16px; }
+    .hero .url {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 13px; color: var(--text);
+      background: var(--bg-input); border: 1px solid var(--line);
+      border-radius: 12px; padding: 10px 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin-top: 12px;
+    }
+    .hero .url span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ghost {
+      border: 0; background: transparent; color: var(--accent);
+      cursor: pointer; font: inherit; padding: 0;
+    }
+    .row { display: flex; gap: 8px; margin-top: 14px; }
+    .btn {
+      flex: 1; height: 40px; border: 0; border-radius: 12px;
+      font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .btn:disabled { opacity: .55; cursor: default; }
+    .btn-primary { background: var(--accent); color: #081018; }
+    .btn-primary.stop { background: #ff7a7a; color: #1a0808; }
+    .btn-secondary {
+      background: var(--accent-dim); color: #cfe0ff;
+      border: 1px solid rgba(79,140,255,.25);
+    }
+    h2 {
+      margin: 0 0 12px; font-size: 12px; font-weight: 650;
+      color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+    }
+    label { display: block; margin: 0 0 6px; color: var(--muted); font-size: 12px; }
+    .field { margin-bottom: 12px; }
+    .field:last-child { margin-bottom: 0; }
+    input[type=text], input[type=password], input[type=number], select {
+      width: 100%; height: 38px; border-radius: 11px;
+      border: 1px solid var(--line); background: var(--bg-input); color: var(--text);
+      padding: 0 12px; font: inherit; outline: none;
+    }
+    input:focus, select:focus { border-color: rgba(79,140,255,.7); }
+    .path-row { display: flex; gap: 8px; }
+    .path-row input { flex: 1; }
+    .path-row .btn { flex: 0 0 auto; width: 72px; height: 38px; }
+    .switch-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 8px 0;
+    }
+    .switch-row span { color: var(--text); }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .toggle { position: relative; width: 42px; height: 24px; flex: 0 0 auto; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; border-radius: 999px;
+      background: #2a3140; cursor: pointer; transition: .2s;
+    }
+    .slider:before {
+      content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px;
+      background: white; border-radius: 50%; transition: .2s;
+    }
+    .toggle input:checked + .slider { background: var(--accent); }
+    .toggle input:checked + .slider:before { transform: translateX(18px); }
+    .meta {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      color: var(--muted); font-size: 12px;
+    }
+    .meta b { display: block; color: var(--text); font-weight: 600; margin-top: 2px; }
+    .foot {
+      display: flex; justify-content: space-between; align-items: center;
+      color: var(--muted); font-size: 12px; margin-top: 8px; padding: 0 4px;
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+      background: #1b2230; color: var(--text); border: 1px solid var(--line);
+      padding: 8px 12px; border-radius: 10px; font-size: 12px;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .toast.show { opacity: 1; }
+    .err { color: var(--bad); font-size: 12px; margin-top: 8px; min-height: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo">Q</div>
+        <div>
+          <h1>QMT Bridge</h1>
+          <p>把 miniQMT 变成局域网 API</p>
+        </div>
+      </div>
+      <div id="status" class="pill"><i class="dot"></i>未启动</div>
+    </header>
+
+    <section class="card hero">
+      <div class="url">
+        <span id="localUrl">http://127.0.0.1:8000</span>
+        <button class="ghost" type="button" id="copyBtn">复制</button>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" id="toggleBtn" type="button">启动服务</button>
+        <button class="btn btn-secondary" id="docsBtn" type="button">打开文档</button>
+      </div>
+      <div class="err" id="error"></div>
+    </section>
+
+    <section class="card">
+      <h2>连接</h2>
+      <div class="field">
+        <label for="port">端口</label>
+        <input id="port" type="number" min="1" max="65535" />
+      </div>
+      <div class="field">
+        <label for="apiKey">API Key（保护交易接口）</label>
+        <input id="apiKey" type="password" autocomplete="off" placeholder="可选" />
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>交易</h2>
+      <div class="switch-row">
+        <div>
+          <span>启用交易</span>
+          <div class="hint">需要 miniQMT 已登录「独立交易」</div>
+        </div>
+        <label class="toggle"><input id="trading" type="checkbox" /><i class="slider"></i></label>
+      </div>
+      <div class="field">
+        <label for="qmtPath">miniQMT 路径（userdata_mini）</label>
+        <div class="path-row">
+          <input id="qmtPath" type="text" placeholder="自动探测或手动选择" />
+          <button class="btn btn-secondary" id="browseBtn" type="button">浏览</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="stockId">普通账户</label>
+        <input id="stockId" type="text" placeholder="可选" />
+      </div>
+      <div class="field">
+        <label for="creditId">信用账户</label>
+        <input id="creditId" type="text" placeholder="可选" />
+      </div>
+      <div class="field">
+        <label for="defaultAccount">默认账户</label>
+        <select id="defaultAccount">
+          <option value="stock">普通账户</option>
+          <option value="credit">信用账户</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>选项</h2>
+      <div class="switch-row">
+        <span>开机启动</span>
+        <label class="toggle"><input id="autostart" type="checkbox" /><i class="slider"></i></label>
+      </div>
+      <div class="switch-row">
+        <span>打开后自动启动服务</span>
+        <label class="toggle"><input id="startOnLaunch" type="checkbox" /><i class="slider"></i></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="meta">
+        <div>miniQMT<b id="qmtMeta">检测中…</b></div>
+        <div>xtquant<b id="xtMeta">检测中…</b></div>
+      </div>
+    </section>
+
+    <div class="foot">
+      <span id="version">v</span>
+      <button class="ghost" type="button" id="logsBtn">打开日志</button>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let busy = false;
+    let lastRunning = false;
+
+    function toast(msg) {
+      const el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 1600);
+    }
+
+    function formConfig() {
+      return {
+        port: Number($("port").value || 8000),
+        api_key: $("apiKey").value,
+        trading_enabled: $("trading").checked,
+        mini_qmt_path: $("qmtPath").value.trim(),
+        stock_account_id: $("stockId").value.trim(),
+        credit_account_id: $("creditId").value.trim(),
+        default_account: $("defaultAccount").value,
+        autostart: $("autostart").checked,
+        start_on_launch: $("startOnLaunch").checked,
+      };
+    }
+
+    function applyConfig(cfg) {
+      $("port").value = cfg.port;
+      $("apiKey").value = cfg.api_key || "";
+      $("trading").checked = !!cfg.trading_enabled;
+      $("qmtPath").value = cfg.mini_qmt_path || "";
+      $("stockId").value = cfg.stock_account_id || "";
+      $("creditId").value = cfg.credit_account_id || "";
+      $("defaultAccount").value = cfg.default_account || "stock";
+      $("autostart").checked = !!cfg.autostart;
+      $("startOnLaunch").checked = !!cfg.start_on_launch;
+    }
+
+    function setStatus(state) {
+      const el = $("status");
+      el.classList.remove("ok", "warn", "bad");
+      if (state.healthy) {
+        el.classList.add("ok");
+        el.innerHTML = '<i class="dot"></i>运行中';
+      } else if (state.running) {
+        el.classList.add("warn");
+        el.innerHTML = '<i class="dot"></i>启动中';
+      } else {
+        el.innerHTML = '<i class="dot"></i>未启动';
+      }
+      const btn = $("toggleBtn");
+      btn.textContent = state.running ? "停止服务" : "启动服务";
+      btn.classList.toggle("stop", !!state.running);
+      lastRunning = !!state.running;
+    }
+
+    async function refresh() {
+      const res = await fetch("/api/state");
+      const s = await res.json();
+      $("localUrl").textContent = s.local_url;
+      $("version").textContent = "v" + s.version;
+      $("qmtMeta").textContent = s.qmt.running
+        ? "已登录"
+        : (s.qmt.found ? "已安装，未登录" : "未找到");
+      $("xtMeta").textContent = s.xtquant.ok
+        ? (s.xtquant.version || "可用")
+        : "未就绪";
+      setStatus(s);
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag !== "INPUT" && tag !== "SELECT" && tag !== "TEXTAREA") {
+        applyConfig(s.config);
+      }
+      return s;
+    }
+
+    async function saveSilent() {
+      await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formConfig()),
+      });
+    }
+
+    async function post(url, body) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : "{}",
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: "请求失败" }));
+      if (!res.ok && !data.error) data.error = "请求失败";
+      return data;
+    }
+
+    $("toggleBtn").onclick = async () => {
+      if (busy) return;
+      busy = true;
+      $("error").textContent = "";
+      $("toggleBtn").disabled = true;
+      try {
+        if (lastRunning) {
+          const r = await post("/api/stop");
+          if (!r.ok) $("error").textContent = r.error || "停止失败";
+        } else {
+          const r = await post("/api/start", formConfig());
+          if (!r.ok) $("error").textContent = r.error || r.log || "启动失败";
+          else if (r.warning) $("error").textContent = r.warning;
+        }
+        await refresh();
+      } finally {
+        busy = false;
+        $("toggleBtn").disabled = false;
+      }
+    };
+
+    $("docsBtn").onclick = () => post("/api/open-docs");
+    $("logsBtn").onclick = () => post("/api/open-logs");
+    $("copyBtn").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText($("localUrl").textContent);
+        toast("已复制本机地址");
+      } catch {
+        toast("复制失败，请手动选择");
+      }
+    };
+    $("browseBtn").onclick = async () => {
+      const r = await post("/api/browse");
+      if (r.path) {
+        $("qmtPath").value = r.path;
+        await saveSilent();
+      }
+    };
+
+    ["port","apiKey","qmtPath","stockId","creditId","defaultAccount"].forEach((id) => {
+      $(id).addEventListener("change", saveSilent);
+    });
+    ["trading","autostart","startOnLaunch"].forEach((id) => {
+      $(id).addEventListener("change", saveSilent);
+    });
+
+    refresh().catch((err) => { $("error").textContent = String(err); });
+    setInterval(() => { if (!busy) refresh().catch(() => {}); }, 2000);
+  </script>
+</body>
+</html>

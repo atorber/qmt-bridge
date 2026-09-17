@@ -1,0 +1,94 @@
+# 发布 Windows 桌面安装包（x86-win / arm-win）
+name: Release desktop
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.tag }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+            tag: x86-win
+          - os: windows-11-arm
+            arch: arm64
+            tag: arm-win
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if ($iscc) {
+            Write-Host "已安装 Inno Setup: $iscc"
+            exit 0
+          }
+          if (Get-Command choco -ErrorAction SilentlyContinue) {
+            choco install innosetup --no-progress -y
+          }
+          else {
+            $setup = Join-Path $env:RUNNER_TEMP "innosetup.exe"
+            Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $setup -UseBasicParsing
+            Start-Process -FilePath $setup -ArgumentList "/VERYSILENT","/NORESTART","/ALLUSERS" -Wait
+          }
+
+      - name: Build desktop package
+        shell: pwsh
+        run: |
+          pwsh -ExecutionPolicy Bypass -File packaging/windows/build.ps1 -Arch ${{ matrix.arch }}
+
+      - name: List dist
+        shell: pwsh
+        run: Get-ChildItem packaging\windows\dist -File | Format-Table Name, Length
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.tag }}
+          if-no-files-found: error
+          path: |
+            packaging/windows/dist/QMTBridge-Setup-*-${{ matrix.tag }}.exe
+            packaging/windows/dist/QMTBridge-*-${{ matrix.tag }}.zip
+
+  publish:
+    name: Upload release assets
+    needs: build
+    if: ${{ always() && github.event_name == 'release' && !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: dist
+          if-no-files-found: error
+
+      - name: Show files
+        run: |
+          ls -lh dist
+          test -n "$(ls dist/QMTBridge-Setup-*.exe 2>/dev/null)"
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          fail_on_unmatched_files: true
+          files: dist/*

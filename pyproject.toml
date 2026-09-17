@@ -54,6 +54,10 @@ dashboard = [
     "plotly>=5.18",
     "pandas>=1.5",
 ]
+desktop = [
+    "pystray>=0.19",
+    "pillow>=10.0",
+]
 test = [
     "pytest>=7.4",
     "httpx>=0.25",
@@ -74,6 +78,7 @@ filterwarnings = [
 [project.scripts]
 qmt-server = "qmt_bridge.server.cli:main"
 qmt-scheduler = "qmt_bridge.server.cli:scheduler_main"
+qmt-desktop = "qmt_bridge.desktop.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/atorber/qmt-bridge"
@@ -85,11 +90,18 @@ path = "src/qmt_bridge/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/qmt_bridge"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"src/qmt_bridge/desktop/assets/index.html" = "qmt_bridge/desktop/assets/index.html"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "src/qmt_bridge",
+    "packaging/windows",
     "tests",
     "README.md",
     "LICENSE",
     "pyproject.toml",
+]
+exclude = [
+    "packaging/windows/dist",
 ]

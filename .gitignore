@@ -58,3 +58,9 @@ htmlcov/
 # Documentation build output
 site/
 reports/*
+
+# Windows 桌面安装包构建产物
+packaging/windows/dist/
+packaging/windows/_version.iss
+packaging/windows/qmt-bridge.ico
+packaging/windows/qmt-bridge.png

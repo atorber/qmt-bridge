@@ -17,12 +17,16 @@
 
 ## 安装
 
+面向开发者：
+
 ```bash
 git clone https://github.com/atorber/qmt-bridge.git
 cd qmt-bridge
 pip install -e ".[full]"
 cp .env.example .env
 ```
+
+面向桌面用户（无需本机 Python）：从 GitHub Release 下载 `QMTBridge-Setup-*-x86-win.exe`（Intel/AMD）或 `*-arm-win.exe`（ARM）。本地打包见 [快速开始](docs/getting-started.md)。
 
 仅客户端（零依赖 stdlib）：`pip install qmt-bridge-pro` 或 `pip install -e ".[client]"`。导入仍为 `from qmt_bridge import QMTClient`。
 

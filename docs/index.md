@@ -17,6 +17,7 @@
 - 100+ REST API、多个 WebSocket
 - `QMTClient` 零依赖（stdlib）
 - 交易端点 API Key 认证
+- Windows 桌面安装包（客户机无需 Python，见 [快速开始](getting-started.md)）
 
 ## 快速导航
 

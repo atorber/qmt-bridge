@@ -1,0 +1,8 @@
+fastapi>=0.100
+uvicorn[standard]>=0.20
+pandas>=1.5
+numpy>=1.23
+websockets>=11.0
+httpx>=0.25
+pystray>=0.19
+pillow>=10.0

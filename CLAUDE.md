@@ -17,8 +17,10 @@
 src/qmt_bridge/
   server/          # FastAPI 服务端 (routers/, ws/, trading/)
   client/          # Python 客户端 (Mixin 模式)
+  desktop/         # Windows 桌面控制面板（托盘 + 本地 HTML）
   accounts.py      # 账户类型解析（无 FastAPI 依赖）
   _version.py      # 单一版本源
+packaging/windows/ # 嵌入式 Python + Inno Setup 安装包
 scripts/           # 独立脚本 (download_all.py 等)
 tests/             # pytest 测试
 dashboard/         # Streamlit 仪表盘
@@ -29,9 +31,13 @@ logs/              # 运行日志 (gitignored)
 ## 常用命令
 
 ```bash
-pip install -e ".[full,docs,dashboard]"   # 安装全部依赖
-qmt-server --port 8080 --trading          # 启动 API 服务
-scripts\pm2-start.bat                     # Windows PM2 守护（崩溃自动拉起，见 docs/getting-started.md）
+pip install -e ".[full,docs,dashboard,desktop]"  # 安装全部依赖
+qmt-server --port 8080 --trading                 # 启动 API 服务
+qmt-desktop                                      # Windows 桌面控制面板（开发模式）
+packaging\windows\build.ps1                      # 生成免 Python 的 Windows 安装包 / 便携版
+packaging\windows\build.ps1 -Arch x64            # x86-win（x64）
+packaging\windows\build.ps1 -Arch arm64          # arm-win
+scripts\pm2-start.bat                            # Windows PM2 守护（崩溃自动拉起，见 docs/getting-started.md）
 python scripts/download_all.py            # 下载 A 股历史行情 + 财务数据
 python -m pytest tests/ -q                # API 契约测试（无需 QMT）
 python -m ruff format src/ tests/ && python -m ruff check src/ tests/

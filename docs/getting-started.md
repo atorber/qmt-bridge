@@ -1,14 +1,47 @@
 # 快速开始
 
-在 Windows 上启动 **QMT Bridge**（`qmt-server`），供局域网内 HTTP/WebSocket 客户端调用。自然语言工作流见 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)。
+在 Windows 上启动 **QMT Bridge**，供局域网内 HTTP/WebSocket 客户端调用。自然语言工作流见 [qmt-trading-skill](https://github.com/atorber/qmt-trading-skill)。
+
+## 桌面安装包（无需 Python）
+
+给不熟悉命令行的 Windows 用户：把 miniQMT 封装成可双击的控制面板。**客户机仍需先安装并登录券商 miniQMT**（勾选「独立交易」）。
+
+开发者在仓库根目录打包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Arch x64
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Arch arm64
+```
+
+产物在 `packaging\windows\dist\`：
+
+| 文件 | 说明 |
+|------|------|
+| `QMTBridge-Setup-<版本>-x86-win.exe` | Windows x64 安装包（Intel/AMD，ARM 电脑也可模拟运行） |
+| `QMTBridge-<版本>-x86-win.zip` | 同上便携版 |
+| `QMTBridge-Setup-<版本>-arm-win.exe` | Windows ARM64 安装包 |
+| `QMTBridge-<版本>-arm-win.zip` | 同上便携版 |
+| `portable\` | 打包中间目录，可直接运行验证 |
+
+GitHub 上创建 Release（`v*` tag）后，[Release desktop](https://github.com/atorber/qmt-bridge/actions/workflows/release-desktop.yml) 会自动编译并上传上述 exe / zip。券商 miniQMT 目前以 x64 为主，连交易请优先下 **x86-win**。
+
+客户使用：安装或解压 → 双击 **QMT Bridge** → 确认端口 / miniQMT 路径 → **启动服务**。关闭窗口后程序仍在托盘运行，退出请用托盘菜单「退出」。配置与日志在 `%APPDATA%\QMT Bridge\`。
+
+开发模式（已有 Python 环境）也可直接：
+
+```bash
+pip install -e ".[full,desktop]"
+qmt-desktop
+```
 
 ## 前提条件
 
 ### Windows 端（服务端）
 
-- **Python** 3.10+
+- **Python** 3.10+（仅源码 / `pip` 安装需要；桌面安装包已内置运行时）
 - **QMT 客户端** — 已安装并获得券商账号密码（需联系客户经理开通 miniQMT 权限）
-- **xtquant** — 通常随 QMT 客户端安装，或 `pip install xtquant`
+- **xtquant** — 通常随 QMT 客户端安装，或 `pip install xtquant`（安装包会尝试内置）
 
 ### 网络
 
