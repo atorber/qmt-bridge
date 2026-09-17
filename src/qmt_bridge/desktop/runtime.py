@@ -727,7 +727,7 @@ def open_app_window(url: str) -> None:
                 [
                     str(browser),
                     f"--app={url}",
-                    "--window-size=440,640",
+                    "--window-size=920,540",
                     f"--user-data-dir={profile}",
                 ],
                 creationflags=CREATE_NO_WINDOW,
