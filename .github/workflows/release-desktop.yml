@@ -64,6 +64,7 @@ jobs:
           path: |
             packaging/windows/dist/QMTBridge-Setup-*-${{ matrix.tag }}.exe
             packaging/windows/dist/QMTBridge-*-${{ matrix.tag }}.zip
+            packaging/windows/dist/QMTBridge-CLI-*-${{ matrix.tag }}.zip
 
   publish:
     name: Upload release assets
@@ -85,6 +86,7 @@ jobs:
         run: |
           ls -lh dist
           test -n "$(ls dist/QMTBridge-Setup-*.exe 2>/dev/null)"
+          test -n "$(ls dist/QMTBridge-CLI-*.zip 2>/dev/null)"
 
       - name: Attach to GitHub Release
         uses: softprops/action-gh-release@v2

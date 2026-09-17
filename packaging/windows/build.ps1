@@ -122,34 +122,51 @@ function Find-ISCC {
 }
 
 function Compile-Launcher {
-    param([string]$OutputExe, [string]$IconPath)
-    $source = Join-Path $PackagingDir "Launcher.cs"
+    param(
+        [string]$OutputExe,
+        [string]$IconPath,
+        [string]$SourceFile = "Launcher.cs",
+        [ValidateSet("winexe", "exe")]
+        [string]$Target = "winexe"
+    )
+    $source = Join-Path $PackagingDir $SourceFile
+    if (-not (Test-Path $source)) {
+        throw "启动器源码不存在: $source"
+    }
     $csc = Find-Csc
     if ($csc) {
-        # AnyCPU：x64 / ARM64 上都能拉起同目录的 pythonw.exe
+        # AnyCPU：x64 / ARM64 上都能拉起同目录的 python(w).exe
         $args = @(
             "/nologo",
-            "/target:winexe",
+            "/target:$Target",
             "/platform:anycpu",
-            "/out:$OutputExe",
-            "/r:System.Windows.Forms.dll",
-            "/r:System.Drawing.dll"
+            "/out:$OutputExe"
         )
-        if (Test-Path $IconPath) {
+        if ($Target -eq "winexe") {
+            $args += "/r:System.Windows.Forms.dll"
+            $args += "/r:System.Drawing.dll"
+        }
+        if ($IconPath -and (Test-Path $IconPath)) {
             $args += "/win32icon:$IconPath"
         }
         $args += $source
         & $csc @args
         if ($LASTEXITCODE -ne 0) {
-            throw "csc 编译启动器失败"
+            throw "csc 编译启动器失败: $SourceFile"
         }
         return
     }
 
-    Write-Host "未找到 csc.exe，改用 Add-Type 编译启动器"
+    Write-Host "未找到 csc.exe，改用 Add-Type 编译启动器 ($SourceFile)"
     $code = Get-Content -Path $source -Raw -Encoding UTF8
-    $refs = @("System.dll", "System.Windows.Forms.dll", "System.Drawing.dll")
-    Add-Type -TypeDefinition $code -ReferencedAssemblies $refs -OutputAssembly $OutputExe -OutputType WindowsApplication
+    if ($Target -eq "winexe") {
+        $refs = @("System.dll", "System.Windows.Forms.dll", "System.Drawing.dll")
+        Add-Type -TypeDefinition $code -ReferencedAssemblies $refs -OutputAssembly $OutputExe -OutputType WindowsApplication
+    }
+    else {
+        $refs = @("System.dll")
+        Add-Type -TypeDefinition $code -ReferencedAssemblies $refs -OutputAssembly $OutputExe -OutputType ConsoleApplication
+    }
 }
 
 if (-not $Arch) {
@@ -253,7 +270,11 @@ if ($LASTEXITCODE -ne 0) {
 $iconIco = Join-Path $PackagingDir "qmt-bridge.ico"
 $launcher = Join-Path $Portable "QMTBridge.exe"
 Write-Host "编译 QMTBridge.exe"
-Compile-Launcher -OutputExe $launcher -IconPath $iconIco
+Compile-Launcher -OutputExe $launcher -IconPath $iconIco -SourceFile "Launcher.cs" -Target winexe
+
+$cliExe = Join-Path $Portable "qmt-server.exe"
+Write-Host "编译 qmt-server.exe (CLI)"
+Compile-Launcher -OutputExe $cliExe -IconPath $iconIco -SourceFile "ServerCli.cs" -Target exe
 
 $licenseSrc = Join-Path $Root "LICENSE"
 if (Test-Path $licenseSrc) {
@@ -272,10 +293,16 @@ QMT Bridge $Version ($ArchTag)
 
 客户机不需要安装 Python。$archHint
 
+【桌面控制面板】
 1. 先安装券商 miniQMT，勾选「独立交易」并保持登录
 2. 双击 QMTBridge.exe
-3. 在打开的窗口中确认端口 / 路径，点击「启动服务」
+3. 在打开的窗口中确认端口 / 路径，点击「启动」
 4. 浏览器打开文档地址（默认 http://127.0.0.1:8000/docs）
+
+【命令行 CLI】
+也可直接运行同目录的 qmt-server.exe（参数与 pip 版 qmt-server 相同），例如：
+  qmt-server.exe --port 8000 --trading
+  qmt-server.exe --help
 
 配置与日志在: %APPDATA%\QMT Bridge\
 关闭窗口后程序仍在托盘运行；退出请用托盘菜单「退出」。
@@ -283,6 +310,36 @@ QMT Bridge $Version ($ArchTag)
 $readmePath = Join-Path $Portable "使用说明.txt"
 $utf8Bom = New-Object System.Text.UTF8Encoding $true
 [System.IO.File]::WriteAllText($readmePath, $readme, $utf8Bom)
+
+# ---- CLI 专用便携包（仅 runtime + qmt-server.exe，可单独拷贝使用）----
+$CliPortable = Join-Path $Dist "cli-portable"
+if (Test-Path $CliPortable) {
+    Remove-Item -Recurse -Force $CliPortable
+}
+New-Item -ItemType Directory -Force -Path $CliPortable | Out-Null
+Write-Host "组装 CLI 便携目录"
+Copy-Item -Recurse $Runtime (Join-Path $CliPortable "runtime")
+Copy-Item $cliExe (Join-Path $CliPortable "qmt-server.exe")
+if (Test-Path $licenseSrc) {
+    Copy-Item $licenseSrc (Join-Path $CliPortable "LICENSE.txt")
+}
+$cliReadme = @"
+QMT Bridge CLI $Version ($ArchTag)
+
+免安装 Python。解压后直接运行：
+
+  qmt-server.exe
+  qmt-server.exe --port 8000 --trading --api-key your-key
+  qmt-server.exe --help
+
+请先安装并登录券商 miniQMT（独立交易）。
+配置以命令行参数为准，例如 --port / --trading / --api-key；
+当前目录若有 .env 仅作缺省补充（不会覆盖已传参数）。
+$archHint
+
+勿只拷贝 qmt-server.exe：必须与 runtime\ 目录放在一起。
+"@
+[System.IO.File]::WriteAllText((Join-Path $CliPortable "使用说明.txt"), $cliReadme, $utf8Bom)
 
 $innoAllowed = if ($Arch -eq "arm64") { "arm64" } else { "x64compatible" }
 @"
@@ -296,8 +353,15 @@ $zipPath = Join-Path $Dist "QMTBridge-$Version-$ArchTag.zip"
 if (Test-Path $zipPath) {
     Remove-Item $zipPath
 }
-Write-Host "压缩便携包 $zipPath"
+Write-Host "压缩桌面便携包 $zipPath"
 Compress-Archive -Path (Join-Path $Portable "*") -DestinationPath $zipPath
+
+$cliZipPath = Join-Path $Dist "QMTBridge-CLI-$Version-$ArchTag.zip"
+if (Test-Path $cliZipPath) {
+    Remove-Item $cliZipPath
+}
+Write-Host "压缩 CLI 便携包 $cliZipPath"
+Compress-Archive -Path (Join-Path $CliPortable "*") -DestinationPath $cliZipPath
 
 $installer = Join-Path $Dist "QMTBridge-Setup-$Version-$ArchTag.exe"
 if (-not $SkipInstaller) {
@@ -324,7 +388,9 @@ Write-Host "完成。"
 Write-Host "架构:     $Arch ($ArchTag)"
 Write-Host "便携目录: $Portable"
 Write-Host "ZIP:      $zipPath"
+Write-Host "CLI 目录: $CliPortable"
+Write-Host "CLI ZIP:  $cliZipPath"
 if ($installer -and (Test-Path $installer)) {
     Write-Host "安装包:   $installer"
 }
-Write-Host "请先在本机双击 QMTBridge.exe 验证控制面板与启动服务。"
+Write-Host "请先在本机验证 QMTBridge.exe / qmt-server.exe。"

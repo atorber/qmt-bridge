@@ -19,14 +19,30 @@ import os
 from .config import Settings, _load_env_file, reset_settings
 
 
+def _bootstrap_env_and_xtquant() -> None:
+    """可选加载当前目录 .env，并注入 xtquant（嵌入式包必需）。
+
+    配置以命令行参数 / 已有环境变量为准；``.env`` 仅作缺省补充，不会覆盖二者。
+    不自动读取桌面版 ``%APPDATA%\\QMT Bridge\\.env``。
+    """
+    _load_env_file()
+    try:
+        from qmt_bridge.desktop.runtime import ensure_xtquant_on_path
+
+        ensure_xtquant_on_path()
+    except Exception:
+        pass
+
+
 def main():
     """解析命令行参数，构建配置对象并启动 Uvicorn 服务器。
 
     启动流程：
-    1. 从 .env 文件加载环境变量（已存在的环境变量不会被覆盖）
-    2. 解析命令行参数（命令行参数优先级高于环境变量）
-    3. 用参数构建 Settings 配置对象并设置为全局单例
-    4. 创建 FastAPI 应用并通过 Uvicorn 启动 HTTP 服务
+    1. 可选从当前目录 .env 加载缺省（已存在的环境变量不会被覆盖；不读桌面版配置）
+    2. 注入本机 miniQMT 的 xtquant 路径（嵌入式 Python 忽略 PYTHONPATH）
+    3. 解析命令行参数（命令行参数优先级最高）
+    4. 用参数构建 Settings 配置对象并设置为全局单例
+    5. 创建 FastAPI 应用并通过 Uvicorn 启动 HTTP 服务
 
     命令行参数说明：
         --host:           监听地址，默认 0.0.0.0（所有网卡）
@@ -41,7 +57,7 @@ def main():
         --default-account:   默认 API/订阅账户 stock | credit（默认 stock）
     """
     # 优先从 .env 文件加载环境变量，使得后续参数默认值可以读取到 .env 中的配置
-    _load_env_file()
+    _bootstrap_env_and_xtquant()
 
     parser = argparse.ArgumentParser(
         prog="qmt-server",
@@ -161,7 +177,7 @@ def scheduler_main():
         qmt-scheduler                    # 使用 .env 默认配置
         qmt-scheduler --log-level debug  # 调试模式
     """
-    _load_env_file()
+    _bootstrap_env_and_xtquant()
 
     parser = argparse.ArgumentParser(
         prog="qmt-scheduler",

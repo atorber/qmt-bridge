@@ -19,14 +19,21 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Arch arm64
 | 文件 | 说明 |
 |------|------|
 | `QMTBridge-Setup-<版本>-x86-win.exe` | Windows x64 安装包（Intel/AMD，ARM 电脑也可模拟运行） |
-| `QMTBridge-<版本>-x86-win.zip` | 同上便携版 |
+| `QMTBridge-<版本>-x86-win.zip` | 同上便携版（含桌面面板 + `qmt-server.exe`） |
+| `QMTBridge-CLI-<版本>-x86-win.zip` | **仅 CLI**：解压后直接运行 `qmt-server.exe` 启动服务 |
 | `QMTBridge-Setup-<版本>-arm-win.exe` | Windows ARM64 安装包 |
 | `QMTBridge-<版本>-arm-win.zip` | 同上便携版 |
-| `portable\` | 打包中间目录，可直接运行验证 |
+| `QMTBridge-CLI-<版本>-arm-win.zip` | ARM64 CLI 便携包 |
+| `portable\` / `cli-portable\` | 打包中间目录，可直接运行验证 |
 
 GitHub 上创建 Release（`v*` tag）后，[Release desktop](https://github.com/atorber/qmt-bridge/actions/workflows/release-desktop.yml) 会自动编译并上传上述 exe / zip。券商 miniQMT 目前以 x64 为主，连交易请优先下 **x86-win**。
 
-客户使用：安装或解压 → 双击 **QMT Bridge** → 确认端口 / miniQMT 路径 → **启动服务**。关闭窗口后程序仍在托盘运行，退出请用托盘菜单「退出」。配置与日志在 `%APPDATA%\QMT Bridge\`。
+客户使用：
+
+- **桌面**：安装或解压 → 双击 **QMT Bridge** → 确认端口 / miniQMT 路径 → **启动**。关闭窗口后程序仍在托盘运行，退出请用托盘菜单「退出」。
+- **CLI**：解压 `QMTBridge-CLI-*.zip` → 运行 `qmt-server.exe`（参数与 pip 版 `qmt-server` 相同，如 `--port 8000 --trading`）。须与同目录 `runtime\` 一起拷贝，勿只拷贝单个 exe。配置以命令行参数为准；当前目录若有 `.env` 仅作缺省补充。
+
+桌面版配置与日志在 `%APPDATA%\QMT Bridge\`。
 
 开发模式（已有 Python 环境）也可直接：
 

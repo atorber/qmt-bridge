@@ -34,9 +34,10 @@ logs/              # 运行日志 (gitignored)
 pip install -e ".[full,docs,dashboard,desktop]"  # 安装全部依赖
 qmt-server --port 8080 --trading                 # 启动 API 服务
 qmt-desktop                                      # Windows 桌面控制面板（开发模式）
-packaging\windows\build.ps1                      # 生成免 Python 的 Windows 安装包 / 便携版
+packaging\windows\build.ps1                      # 生成免 Python 的 Windows 安装包 / 便携版 / CLI
 packaging\windows\build.ps1 -Arch x64            # x86-win（x64）
 packaging\windows\build.ps1 -Arch arm64          # arm-win
+# 产物含 QMTBridge-*.zip、QMTBridge-CLI-*.zip、Setup.exe（若已装 Inno Setup）
 scripts\pm2-start.bat                            # Windows PM2 守护（崩溃自动拉起，见 docs/getting-started.md）
 python scripts/download_all.py            # 下载 A 股历史行情 + 财务数据
 python -m pytest tests/ -q                # API 契约测试（无需 QMT）

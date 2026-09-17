@@ -421,7 +421,7 @@ def detect_qmt() -> dict:
 
 
 def find_xtquant_site_packages() -> list[str]:
-    """返回包含 ``xtquant`` 包的目录，供 PYTHONPATH 注入。
+    """返回包含 ``xtquant`` 包的目录，供 PYTHONPATH / .pth 注入。
 
     只做文件系统探测，避免在桌面进程里 ``import xtquant``
     （C 扩展异常会拖垮控制面板）。
@@ -435,9 +435,27 @@ def find_xtquant_site_packages() -> list[str]:
         Path("pypi"),
         Path("."),
     )
-    for home in _iter_candidate_qmt_homes():
+
+    homes: list[Path] = list(_iter_candidate_qmt_homes())
+    # 优先纳入用户配置的 miniQMT 路径（及其上级安装目录）
+    try:
+        configured = str(load_config().get("mini_qmt_path") or "").strip()
+    except Exception:
+        configured = ""
+    if configured:
+        cfg_path = Path(configured)
+        homes.insert(0, cfg_path)
+        if cfg_path.name.lower() == "userdata_mini":
+            homes.insert(0, cfg_path.parent)
+        elif (cfg_path / "userdata_mini").is_dir():
+            homes.insert(0, cfg_path)
+
+    for home in homes:
         for rel in rels:
-            site = (home / rel).resolve()
+            try:
+                site = (home / rel).resolve()
+            except OSError:
+                continue
             if (site / "xtquant").is_dir() or (site / "xtquant.py").is_file():
                 found.append(str(site))
     runtime_site = Path(sys.executable).resolve().parent / "Lib" / "site-packages"
@@ -453,8 +471,37 @@ def find_xtquant_site_packages() -> list[str]:
     return uniq
 
 
+def runtime_site_packages() -> Path:
+    return Path(sys.executable).resolve().parent / "Lib" / "site-packages"
+
+
+def write_xtquant_pth(sites: list[str] | None = None) -> Path | None:
+    """把 xtquant 路径写入嵌入式运行时的 ``.pth``。
+
+    嵌入式 Python 的 ``python*._pth`` 会忽略 ``PYTHONPATH``，
+    必须通过 ``site-packages/*.pth``（需 ``import site``）注入。
+    """
+    sites = sites if sites is not None else find_xtquant_site_packages()
+    site_dir = runtime_site_packages()
+    pth = site_dir / "qmt_bridge_xtquant.pth"
+    if not sites:
+        try:
+            pth.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return None
+    try:
+        site_dir.mkdir(parents=True, exist_ok=True)
+        pth.write_text("\n".join(sites) + "\n", encoding="utf-8")
+    except OSError:
+        return None
+    return pth
+
+
 def ensure_xtquant_on_path() -> None:
-    for site in find_xtquant_site_packages():
+    sites = find_xtquant_site_packages()
+    write_xtquant_pth(sites)
+    for site in sites:
         if site not in sys.path:
             sys.path.insert(0, site)
         current = os.environ.get("PYTHONPATH", "")
@@ -535,17 +582,26 @@ def start_server(cfg: dict | None = None) -> dict:
     if is_server_healthy(port):
         return {"ok": True, "already": True, "port": port}
 
+    sites = find_xtquant_site_packages()
     ensure_xtquant_on_path()
+    if not sites:
+        return {
+            "ok": False,
+            "error": (
+                "未找到 xtquant。请确认已安装券商 miniQMT；"
+                "ARM 设备请优先使用 x86-win（x64）安装包以便对接 miniQMT。"
+            ),
+        }
+
     python = python_executable(windowed=False)
     env = os.environ.copy()
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
-    sites = find_xtquant_site_packages()
-    if sites:
-        extra = os.pathsep.join(sites)
-        env["PYTHONPATH"] = (
-            extra + os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else extra
-        )
+    # 仍设置 PYTHONPATH：非嵌入式开发环境可用；嵌入式依赖上方 .pth
+    extra = os.pathsep.join(sites)
+    env["PYTHONPATH"] = (
+        extra + os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else extra
+    )
     env["QMT_BRIDGE_HOST"] = str(cfg.get("host") or "0.0.0.0")
     env["QMT_BRIDGE_PORT"] = str(port)
     env["QMT_BRIDGE_LOG_LEVEL"] = str(cfg.get("log_level") or "info")
