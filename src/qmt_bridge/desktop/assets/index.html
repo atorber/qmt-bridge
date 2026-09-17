@@ -317,10 +317,22 @@
 
     function setEditing(on, { manual = false } = {}) {
       editing = !!on;
-      if (manual) manualEdit = !!on;
-      if (!on) manualEdit = false;
+      if (on) {
+        if (manual) manualEdit = true;
+      } else {
+        manualEdit = false;
+      }
       document.body.classList.toggle("editing", editing);
-      $("settingsBtn").textContent = editing ? "收起" : "设置";
+      syncSettingsLabel();
+    }
+
+    function syncSettingsLabel() {
+      const needs = document.body.classList.contains("needs-setup");
+      if (editing) {
+        $("settingsBtn").textContent = needs && !manualEdit ? "设置" : "收起";
+      } else {
+        $("settingsBtn").textContent = "设置";
+      }
     }
 
     function setStatus(state) {
@@ -370,12 +382,21 @@
       // 仅首次缺配置时自动进入编辑态；手动打开设置后保持
       if (needs && !manualEdit) setEditing(true);
       else if (!needs && !manualEdit && editing) setEditing(false);
+      else syncSettingsLabel();
 
       const tag = document.activeElement && document.activeElement.tagName;
       if (tag !== "INPUT" && tag !== "SELECT" && tag !== "TEXTAREA") {
         applyConfig(s.config);
       }
+      syncTradingHints();
       return s;
+    }
+
+    function syncTradingHints() {
+      const on = $("trading").checked;
+      $("stockId").placeholder = on ? "至少填一个账户" : "可选";
+      $("creditId").placeholder = on ? "至少填一个账户" : "可选";
+      $("qmtPath").placeholder = on ? "启用交易时必填" : "自动探测或手动选择";
     }
 
     async function saveSilent(extra) {
@@ -431,8 +452,16 @@
     });
 
     $("settingsBtn").onclick = () => {
-      if (editing && manualEdit) setEditing(false);
-      else setEditing(true, { manual: true });
+      if (editing) {
+        // 首次必填未完成时不允许收起
+        if (document.body.classList.contains("needs-setup") && !manualEdit) {
+          toast("请先完成必填配置并点击「完成」");
+          return;
+        }
+        setEditing(false);
+      } else {
+        setEditing(true, { manual: true });
+      }
     };
 
     $("doneBtn").onclick = async () => {
@@ -473,7 +502,10 @@
       $(id).addEventListener("change", () => saveSilent());
     });
     ["trading","autostart","startOnLaunch"].forEach((id) => {
-      $(id).addEventListener("change", () => saveSilent());
+      $(id).addEventListener("change", () => {
+        if (id === "trading") syncTradingHints();
+        saveSilent();
+      });
     });
 
     refresh().catch((err) => { $("error").textContent = String(err); });
