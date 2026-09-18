@@ -24,8 +24,10 @@ _NO_PROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def app_data_dir() -> Path:
-    """用户配置目录：``%APPDATA%\\QMT Bridge``。"""
-    base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+    """用户配置目录（``%APPDATA%/QMT Bridge``）。"""
+    base = os.environ.get("APPDATA")
+    if not base:
+        base = str(Path.home() / "AppData" / "Roaming")
     path = Path(base) / APP_NAME
     path.mkdir(parents=True, exist_ok=True)
     (path / "logs").mkdir(exist_ok=True)
@@ -156,7 +158,10 @@ def save_desktop_prefs(prefs: dict) -> None:
                 "autostart": bool(prefs.get("autostart", False)),
                 "start_on_launch": bool(prefs.get("start_on_launch", False)),
                 "setup_complete": bool(
-                    prefs.get("setup_complete", current.get("setup_complete", False))
+                    prefs.get(
+                        "setup_complete",
+                        current.get("setup_complete", False),
+                    )
                 ),
             },
             ensure_ascii=False,
@@ -210,7 +215,9 @@ def load_config() -> dict:
         cfg["log_level"] = env["QMT_BRIDGE_LOG_LEVEL"] or "info"
     if "QMT_BRIDGE_API_KEY" in env:
         cfg["api_key"] = env["QMT_BRIDGE_API_KEY"]
-    cfg["require_auth_for_data"] = _as_bool(env.get("QMT_BRIDGE_REQUIRE_AUTH_FOR_DATA"))
+    cfg["require_auth_for_data"] = _as_bool(
+        env.get("QMT_BRIDGE_REQUIRE_AUTH_FOR_DATA")
+    )
     cfg["trading_enabled"] = _as_bool(env.get("QMT_BRIDGE_TRADING_ENABLED"))
     if "QMT_BRIDGE_MINI_QMT_PATH" in env:
         cfg["mini_qmt_path"] = env["QMT_BRIDGE_MINI_QMT_PATH"]
@@ -220,7 +227,9 @@ def load_config() -> dict:
         cfg["credit_account_id"] = env["QMT_BRIDGE_CREDIT_ACCOUNT_ID"]
     if "QMT_BRIDGE_DEFAULT_ACCOUNT" in env:
         acct = env["QMT_BRIDGE_DEFAULT_ACCOUNT"].lower()
-        cfg["default_account"] = acct if acct in ("stock", "credit") else "stock"
+        cfg["default_account"] = (
+            acct if acct in ("stock", "credit") else "stock"
+        )
     prefs = load_desktop_prefs()
     cfg["autostart"] = prefs["autostart"]
     cfg["start_on_launch"] = prefs["start_on_launch"]
@@ -243,18 +252,26 @@ def save_config(cfg: dict) -> dict:
     if merged["port"] < 1 or merged["port"] > 65535:
         raise ValueError("端口需在 1–65535 之间")
     acct = str(merged.get("default_account") or "stock").lower()
-    merged["default_account"] = acct if acct in ("stock", "credit") else "stock"
+    merged["default_account"] = (
+        acct if acct in ("stock", "credit") else "stock"
+    )
     trading = _as_bool(merged.get("trading_enabled"))
     merged["trading_enabled"] = trading
-    merged["require_auth_for_data"] = _as_bool(merged.get("require_auth_for_data"))
+    merged["require_auth_for_data"] = _as_bool(
+        merged.get("require_auth_for_data")
+    )
     merged["autostart"] = _as_bool(merged.get("autostart"))
     merged["start_on_launch"] = _as_bool(merged.get("start_on_launch"))
     # 仅在面板显式传入时更新；静默保存字段不误标「首次配置完成」
     if "setup_complete" in cfg:
         merged["setup_complete"] = _as_bool(cfg.get("setup_complete"))
     else:
-        merged["setup_complete"] = bool(load_desktop_prefs().get("setup_complete", False))
+        prefs = load_desktop_prefs()
+        merged["setup_complete"] = bool(
+            prefs.get("setup_complete", False)
+        )
 
+    auth_data = "true" if merged["require_auth_for_data"] else "false"
     lines = [
         "# QMT Bridge 桌面配置（由控制面板写入，请勿与仓库 .env 混淆）",
         f"QMT_BRIDGE_HOST={merged.get('host') or '0.0.0.0'}",
@@ -262,11 +279,14 @@ def save_config(cfg: dict) -> dict:
         f"QMT_BRIDGE_LOG_LEVEL={merged.get('log_level') or 'info'}",
         "QMT_BRIDGE_WORKERS=1",
         f"QMT_BRIDGE_API_KEY={merged.get('api_key') or ''}",
-        f"QMT_BRIDGE_REQUIRE_AUTH_FOR_DATA={'true' if merged['require_auth_for_data'] else 'false'}",
+        f"QMT_BRIDGE_REQUIRE_AUTH_FOR_DATA={auth_data}",
         f"QMT_BRIDGE_TRADING_ENABLED={'true' if trading else 'false'}",
         f"QMT_BRIDGE_MINI_QMT_PATH={merged.get('mini_qmt_path') or ''}",
         f"QMT_BRIDGE_STOCK_ACCOUNT_ID={merged.get('stock_account_id') or ''}",
-        f"QMT_BRIDGE_CREDIT_ACCOUNT_ID={merged.get('credit_account_id') or ''}",
+        (
+            "QMT_BRIDGE_CREDIT_ACCOUNT_ID="
+            f"{merged.get('credit_account_id') or ''}"
+        ),
         f"QMT_BRIDGE_DEFAULT_ACCOUNT={merged['default_account']}",
         "",
     ]
@@ -340,9 +360,8 @@ def _qmt_running() -> bool:
     except (OSError, subprocess.SubprocessError):
         return False
     text = (completed.stdout or "").lower()
-    return any(
-        name in text for name in ("xtminiqmt.exe", "miniquote.exe", "xtitclient.exe")
-    )
+    names = ("xtminiqmt.exe", "miniquote.exe", "xtitclient.exe")
+    return any(name in text for name in names)
 
 
 def _iter_candidate_qmt_homes() -> list[Path]:
@@ -462,7 +481,9 @@ def find_xtquant_site_packages() -> list[str]:
                 found.append(str(site))
             elif (site / "xtquant.py").is_file():
                 found.append(str(site))
-    runtime_site = Path(sys.executable).resolve().parent / "Lib" / "site-packages"
+    runtime_site = (
+        Path(sys.executable).resolve().parent / "Lib" / "site-packages"
+    )
     runtime_xt = runtime_site / "xtquant"
     if runtime_xt.is_dir() and _xtquant_dir_compatible(runtime_xt):
         found.insert(0, str(runtime_site))
@@ -660,9 +681,10 @@ def start_server(cfg: dict | None = None) -> dict:
     env["PYTHONIOENCODING"] = "utf-8"
     # 仍设置 PYTHONPATH：非嵌入式开发环境可用；嵌入式依赖上方 .pth
     extra = os.pathsep.join(sites)
-    env["PYTHONPATH"] = (
-        extra + os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else extra
-    )
+    if env.get("PYTHONPATH"):
+        env["PYTHONPATH"] = extra + os.pathsep + env["PYTHONPATH"]
+    else:
+        env["PYTHONPATH"] = extra
     env["QMT_BRIDGE_HOST"] = str(cfg.get("host") or "0.0.0.0")
     env["QMT_BRIDGE_PORT"] = str(port)
     env["QMT_BRIDGE_LOG_LEVEL"] = str(cfg.get("log_level") or "info")
@@ -675,9 +697,15 @@ def start_server(cfg: dict | None = None) -> dict:
         "true" if cfg.get("trading_enabled") else "false"
     )
     env["QMT_BRIDGE_MINI_QMT_PATH"] = str(cfg.get("mini_qmt_path") or "")
-    env["QMT_BRIDGE_STOCK_ACCOUNT_ID"] = str(cfg.get("stock_account_id") or "")
-    env["QMT_BRIDGE_CREDIT_ACCOUNT_ID"] = str(cfg.get("credit_account_id") or "")
-    env["QMT_BRIDGE_DEFAULT_ACCOUNT"] = str(cfg.get("default_account") or "stock")
+    env["QMT_BRIDGE_STOCK_ACCOUNT_ID"] = str(
+        cfg.get("stock_account_id") or ""
+    )
+    env["QMT_BRIDGE_CREDIT_ACCOUNT_ID"] = str(
+        cfg.get("credit_account_id") or ""
+    )
+    env["QMT_BRIDGE_DEFAULT_ACCOUNT"] = str(
+        cfg.get("default_account") or "stock"
+    )
 
     log_file = server_log_path()
     log_handle = open(log_file, "a", encoding="utf-8")
@@ -702,7 +730,12 @@ def start_server(cfg: dict | None = None) -> dict:
     deadline = time.time() + 12
     while time.time() < deadline:
         if is_server_healthy(port, timeout=0.8):
-            return {"ok": True, "already": False, "port": port, "pid": proc.pid}
+            return {
+                "ok": True,
+                "already": False,
+                "port": port,
+                "pid": proc.pid,
+            }
         if proc.poll() is not None:
             tail = read_log_tail()
             return {
@@ -763,7 +796,9 @@ def pick_folder() -> str:
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
-        selected = filedialog.askdirectory(title="选择 miniQMT 的 userdata_mini 目录")
+        selected = filedialog.askdirectory(
+            title="选择 miniQMT 的 userdata_mini 目录"
+        )
         root.destroy()
         return selected or ""
     except Exception:
@@ -791,7 +826,9 @@ def set_autostart(enabled: bool) -> None:
     )
     try:
         if enabled:
-            winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, autostart_command())
+            winreg.SetValueEx(
+                key, APP_NAME, 0, winreg.REG_SZ, autostart_command()
+            )
         else:
             try:
                 winreg.DeleteValue(key, APP_NAME)
@@ -819,7 +856,12 @@ def open_app_window(url: str) -> None:
     """尽量用 Edge/Chrome 的无标签 app 模式打开控制面板。"""
     if sys.platform == "win32":
         candidates = [
-            Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+            Path(
+                os.environ.get(
+                    "ProgramFiles(x86)",
+                    r"C:\Program Files (x86)",
+                )
+            )
             / "Microsoft"
             / "Edge"
             / "Application"
