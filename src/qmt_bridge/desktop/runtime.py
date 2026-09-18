@@ -425,6 +425,7 @@ def find_xtquant_site_packages() -> list[str]:
 
     只做文件系统探测，避免在桌面进程里 ``import xtquant``
     （C 扩展异常会拖垮控制面板）。
+    仅返回与当前 CPython 版本兼容的目录，避免 QMT 旧包盖住 pip 新包。
     """
     found: list[str] = []
     rels = (
@@ -456,10 +457,14 @@ def find_xtquant_site_packages() -> list[str]:
                 site = (home / rel).resolve()
             except OSError:
                 continue
-            if (site / "xtquant").is_dir() or (site / "xtquant.py").is_file():
+            xt_dir = site / "xtquant"
+            if xt_dir.is_dir() and _xtquant_dir_compatible(xt_dir):
+                found.append(str(site))
+            elif (site / "xtquant.py").is_file():
                 found.append(str(site))
     runtime_site = Path(sys.executable).resolve().parent / "Lib" / "site-packages"
-    if (runtime_site / "xtquant").is_dir():
+    runtime_xt = runtime_site / "xtquant"
+    if runtime_xt.is_dir() and _xtquant_dir_compatible(runtime_xt):
         found.insert(0, str(runtime_site))
     uniq: list[str] = []
     seen: set[str] = set()
@@ -471,6 +476,54 @@ def find_xtquant_site_packages() -> list[str]:
     return uniq
 
 
+def _xtquant_dir_compatible(xt_dir: Path) -> bool:
+    """判断 xtquant 目录是否适配当前解释器（按扩展后缀匹配 .pyd）。"""
+    try:
+        import sysconfig
+
+        ext = sysconfig.get_config_var("EXT_SUFFIX") or ""
+    except Exception:
+        ext = ""
+    if not xt_dir.is_dir():
+        return False
+    # 新版 pip xtquant：xtpythonclient / datacenter
+    if ext and (
+        list(xt_dir.glob(f"xtpythonclient*{ext}"))
+        or list(xt_dir.glob(f"datacenter*{ext}"))
+    ):
+        return True
+    # 旧版 QMT 自带：IPythonApiClient
+    if ext and list(xt_dir.glob(f"IPythonApiClient*{ext}")):
+        return True
+    # 仅有其它 Python 版本的旧版 .pyd → 不兼容（强行注入会盖住可用的 pip 包）
+    if list(xt_dir.glob("IPythonApiClient*.pyd")):
+        return False
+    if list(xt_dir.glob("xtpythonclient*.pyd")) or list(
+        xt_dir.glob("datacenter*.pyd")
+    ):
+        return False
+    return (xt_dir / "xtdata.py").is_file()
+
+
+def _xtquant_already_usable() -> bool:
+    """当前 sys.path 上是否已有可用的 xtquant（不主动 import C 扩展）。"""
+    try:
+        import importlib.util
+
+        spec = importlib.util.find_spec("xtquant")
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False
+    if spec is None or not spec.origin:
+        return False
+    return _xtquant_dir_compatible(Path(spec.origin).resolve().parent)
+
+
+def _is_embeddable_runtime() -> bool:
+    """嵌入式发行版旁有 ``python*._pth``，系统/Anaconda Python 通常没有。"""
+    root = Path(sys.executable).resolve().parent
+    return any(root.glob("python*._pth"))
+
+
 def runtime_site_packages() -> Path:
     return Path(sys.executable).resolve().parent / "Lib" / "site-packages"
 
@@ -480,7 +533,10 @@ def write_xtquant_pth(sites: list[str] | None = None) -> Path | None:
 
     嵌入式 Python 的 ``python*._pth`` 会忽略 ``PYTHONPATH``，
     必须通过 ``site-packages/*.pth``（需 ``import site``）注入。
+    对系统 Python / Anaconda **不写** .pth，避免污染全局环境。
     """
+    if not _is_embeddable_runtime():
+        return None
     sites = sites if sites is not None else find_xtquant_site_packages()
     site_dir = runtime_site_packages()
     pth = site_dir / "qmt_bridge_xtquant.pth"
@@ -499,6 +555,9 @@ def write_xtquant_pth(sites: list[str] | None = None) -> Path | None:
 
 
 def ensure_xtquant_on_path() -> None:
+    """仅在当前环境缺少可用 xtquant 时，注入兼容的 QMT/运行时路径。"""
+    if _xtquant_already_usable():
+        return
     sites = find_xtquant_site_packages()
     write_xtquant_pth(sites)
     for site in sites:
@@ -514,10 +573,12 @@ def ensure_xtquant_on_path() -> None:
 
 def xtquant_status() -> dict:
     """桌面进程不 import xtquant，只检查安装位置是否存在。"""
+    if _xtquant_already_usable():
+        return {"ok": True, "version": "可用"}
     sites = find_xtquant_site_packages()
     if sites:
         return {"ok": True, "version": "已检测到"}
-    return {"ok": False, "version": "", "error": "未找到 xtquant"}
+    return {"ok": False, "version": "", "error": "未找到与当前 Python 兼容的 xtquant"}
 
 
 def health_url(port: int) -> str:
