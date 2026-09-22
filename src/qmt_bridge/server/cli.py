@@ -19,6 +19,24 @@ import os
 from .config import Settings, _load_env_file, reset_settings
 
 
+def _select_uvicorn_ws() -> str:
+    """选择 Uvicorn WebSocket 实现。
+
+    uvicorn 0.34 仍依赖 ``websockets.legacy``；本机包损坏或升级到 15+ 后
+    会在启动时报 ``ModuleNotFoundError: No module named 'websockets.legacy'``。
+    此时回退到 ``wsproto``，避免 API 服务起不来。
+    """
+    try:
+        import websockets.legacy.handshake  # noqa: F401
+        return "auto"
+    except Exception:
+        try:
+            import wsproto  # noqa: F401
+            return "wsproto"
+        except Exception:
+            return "auto"
+
+
 def _bootstrap_env_and_xtquant() -> None:
     """可选加载当前目录 .env，并注入 xtquant（嵌入式包必需）。
 
@@ -162,6 +180,7 @@ def main():
         log_level=settings.log_level,
         workers=settings.workers,
         timeout_graceful_shutdown=3,
+        ws=_select_uvicorn_ws(),
     )
 
 

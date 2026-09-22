@@ -32,12 +32,13 @@ dependencies = []
 server = [
     "fastapi>=0.100",
     "uvicorn[standard]>=0.20",
+    "wsproto>=1.2",
     "pandas>=1.5",
     "numpy>=1.23",
 ]
 pandas = ["pandas>=1.5"]
-ws = ["websockets>=11.0"]
-client = ["websockets>=11.0"]
+ws = ["websockets>=11.0,<15"]
+client = ["websockets>=11.0,<15"]
 notify = ["httpx>=0.25"]
 scripts = ["tqdm>=4.60"]
 full = [
